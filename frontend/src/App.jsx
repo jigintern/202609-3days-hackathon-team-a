@@ -5,6 +5,7 @@ import Signup from './pages/Signup.jsx'
 import ProfileSetup from './pages/ProfileSetup.jsx'
 import Artists from './pages/Artists.jsx'
 import ArtistDetail from './pages/ArtistDetail.jsx'
+import EventDetail from './pages/EventDetail.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 function App() {
@@ -34,6 +35,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ArtistDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/events/:eventId"
+        element={
+          <ProtectedRoute>
+            <EventDetail />
           </ProtectedRoute>
         }
       />
