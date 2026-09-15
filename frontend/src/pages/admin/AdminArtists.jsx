@@ -72,10 +72,14 @@ function AdminArtists() {
 
   return (
     <>
-      <h1>アーティスト管理</h1>
+      <h1 className="admin-title">
+        アーティスト管理
+        <span className="admin-badge">管理画面</span>
+      </h1>
 
-      <h2>{editingId ? 'アーティストを編集' : 'アーティストを登録'}</h2>
+      <h2 className="admin-section">{editingId ? 'アーティストを編集' : 'アーティストを登録'}</h2>
       <form
+        className="card admin-form"
         onSubmit={(e) => {
           e.preventDefault()
           submit()
@@ -98,7 +102,7 @@ function AdminArtists() {
             maxLength={100}
           />
         </label>
-        <label>
+        <label className="admin-form-wide">
           説明
           <textarea
             value={form.description}
@@ -115,43 +119,54 @@ function AdminArtists() {
             placeholder="https://..."
           />
         </label>
-        {actionError && <p role="alert">{actionError}</p>}
-        <button type="submit" disabled={pending || !form.name.trim()}>
-          {editingId ? '更新する' : '登録する'}
-        </button>
-        {editingId && (
-          <button type="button" onClick={startCreate} disabled={pending}>
-            編集をやめる
+        {actionError && <p className="admin-form-wide" role="alert">{actionError}</p>}
+        <div className="admin-form-actions">
+          <button type="submit" className="btn-primary" disabled={pending || !form.name.trim()}>
+            {editingId ? '更新する' : '登録する'}
           </button>
-        )}
+          {editingId && (
+            <button type="button" className="btn-secondary" onClick={startCreate} disabled={pending}>
+              編集をやめる
+            </button>
+          )}
+        </div>
       </form>
 
-      <h2>登録済みのアーティスト</h2>
+      <h2 className="admin-section">登録済みのアーティスト</h2>
       {error && <p role="alert">{error}</p>}
       {loading && <p>読み込み中...</p>}
       {!loading && !error && (
-        <ul>
+        <ul className="admin-list">
           {artists.map((artist) => (
-            <li key={artist.id}>
-              <strong>{artist.name}</strong>
-              {artist.nameKana && <span>（{artist.nameKana}）</span>}
-              <span>
-                {' '}
-                イベント{artist.eventCount ?? 0}件 ／ フォロワー{artist.followerCount ?? 0}人
-              </span>
-              <button type="button" onClick={() => startEdit(artist)}>
-                編集
-              </button>
+            <li key={artist.id} className="card admin-list-item">
+              <div className="admin-list-main">
+                <p className="admin-list-body">
+                  <strong>{artist.name}</strong>
+                  {artist.nameKana && <span className="admin-note">（{artist.nameKana}）</span>}
+                </p>
+                <p className="admin-meta">
+                  イベント{artist.eventCount ?? 0}件 ／ フォロワー{artist.followerCount ?? 0}人
+                </p>
+              </div>
+              <div className="admin-actions">
+                <button type="button" className="btn-secondary" onClick={() => startEdit(artist)}>
+                  編集
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
-      {!loading && !error && artists.length === 0 && <p>まだ登録されていません。</p>}
+      {!loading && !error && artists.length === 0 && (
+        <p className="admin-empty">まだ登録されていません。</p>
+      )}
       {loadMoreError && <p role="alert">{loadMoreError}</p>}
       {data?.nextCursor && (
-        <button type="button" onClick={loadMore} disabled={loadingMore}>
-          もっと見る
-        </button>
+        <div className="admin-more">
+          <button type="button" className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
+            もっと見る
+          </button>
+        </div>
       )}
     </>
   )

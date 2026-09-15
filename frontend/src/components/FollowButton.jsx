@@ -10,7 +10,12 @@ function FollowButton({ artistId, isFollowing, onChange }) {
 
   return (
     <>
-      <button type="button" onClick={run} disabled={pending}>
+      <button
+        type="button"
+        className={isFollowing ? 'btn-secondary' : 'btn-primary'}
+        onClick={run}
+        disabled={pending}
+      >
         {isFollowing ? 'フォロー中' : 'フォローする'}
       </button>
       {error && <p role="alert">{error}</p>}

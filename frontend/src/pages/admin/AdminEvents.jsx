@@ -120,13 +120,17 @@ function AdminEvents() {
 
   return (
     <>
-      <h1>イベント管理</h1>
+      <h1 className="admin-title">
+        イベント管理
+        <span className="admin-badge">管理画面</span>
+      </h1>
 
-      <h2>{editingId ? 'イベントを編集' : 'イベントを登録'}</h2>
+      <h2 className="admin-section">{editingId ? 'イベントを編集' : 'イベントを登録'}</h2>
       {data.artists.length === 0 ? (
-        <p>先にアーティストを登録してください。</p>
+        <p className="admin-empty">先にアーティストを登録してください。</p>
       ) : (
         <form
+          className="card admin-form"
           onSubmit={(e) => {
             e.preventDefault()
             submit()
@@ -182,28 +186,31 @@ function AdminEvents() {
               required
             />
           </label>
-          {actionError && <p role="alert">{actionError}</p>}
-          <button type="submit" disabled={pending}>
-            {editingId ? '更新する' : '登録する'}
-          </button>
-          {editingId && (
-            <button type="button" onClick={startCreate} disabled={pending}>
-              編集をやめる
+          {actionError && <p className="admin-form-wide" role="alert">{actionError}</p>}
+          <div className="admin-form-actions">
+            <button type="submit" className="btn-primary" disabled={pending}>
+              {editingId ? '更新する' : '登録する'}
             </button>
-          )}
+            {editingId && (
+              <button type="button" className="btn-secondary" onClick={startCreate} disabled={pending}>
+                編集をやめる
+              </button>
+            )}
+          </div>
         </form>
       )}
 
       {officialTarget && (
         <>
-          <h2>公式情報を入稿: {officialTarget.title}</h2>
+          <h2 className="admin-section">公式情報を入稿: {officialTarget.title}</h2>
           <form
+            className="card admin-form"
             onSubmit={(e) => {
               e.preventDefault()
               submitOfficial()
             }}
           >
-            <label>
+            <label className="admin-form-wide">
               本文
               <textarea
                 value={officialBody}
@@ -212,37 +219,50 @@ function AdminEvents() {
                 maxLength={280}
               />
             </label>
-            {officialError && <p role="alert">{officialError}</p>}
-            <button type="submit" disabled={officialPending || !officialBody.trim()}>
-              入稿する
-            </button>
-            <button type="button" onClick={() => setOfficialTarget(null)} disabled={officialPending}>
-              やめる
-            </button>
+            {officialError && <p className="admin-form-wide" role="alert">{officialError}</p>}
+            <div className="admin-form-actions">
+              <button type="submit" className="btn-primary" disabled={officialPending || !officialBody.trim()}>
+                入稿する
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setOfficialTarget(null)}
+                disabled={officialPending}
+              >
+                やめる
+              </button>
+            </div>
           </form>
         </>
       )}
 
       {officialDone && <p role="status">「{officialDone}」に公式情報を入稿しました。</p>}
 
-      <h2>登録済みのイベント</h2>
-      <ul>
+      <h2 className="admin-section">登録済みのイベント</h2>
+      <ul className="admin-list">
         {data.events.map((event) => (
-          <li key={event.id}>
-            <strong>{event.title}</strong>
-            <span>
-              {' '}
-              / {event.artist?.name} / {event.venue} / {formatDateTime(event.startsAt)}
-            </span>
-            <span>
-              {' '}
-              投稿{event.postCount}件 発言{event.messageCount}件
-            </span>
-            <button type="button" onClick={() => startEdit(event)}>
+          <li key={event.id} className="card admin-list-item">
+            <div className="admin-list-main">
+              <p className="admin-list-body">
+                <strong>{event.title}</strong>
+              </p>
+              <p className="admin-meta">
+                {event.artist?.name} ／ {event.venue}
+                {event.prefecture ? `（${event.prefecture}）` : ''} ／{' '}
+                {formatDateTime(event.startsAt)}
+              </p>
+              <p className="admin-meta">
+                投稿{event.postCount}件 ／ 発言{event.messageCount}件
+              </p>
+            </div>
+            <div className="admin-actions">
+            <button type="button" className="btn-secondary" onClick={() => startEdit(event)}>
               編集
             </button>
             <button
               type="button"
+              className="btn-secondary"
               onClick={() => {
                 setOfficialTarget(event)
                 setOfficialDone(null)
@@ -250,15 +270,18 @@ function AdminEvents() {
             >
               公式情報を入稿
             </button>
+            </div>
           </li>
         ))}
       </ul>
-      {data.events.length === 0 && <p>まだ登録されていません。</p>}
+      {data.events.length === 0 && <p className="admin-empty">まだ登録されていません。</p>}
       {loadMoreError && <p role="alert">{loadMoreError}</p>}
       {data.nextCursor && (
-        <button type="button" onClick={loadMore} disabled={loadingMore}>
-          もっと見る
-        </button>
+        <div className="admin-more">
+          <button type="button" className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
+            もっと見る
+          </button>
+        </div>
       )}
     </>
   )

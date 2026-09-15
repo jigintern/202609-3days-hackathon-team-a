@@ -1,0 +1,420 @@
+:root {
+  --color-primary: #e2001a;
+  --color-primary-dark: #b80014;
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-text: #222222;
+  --color-text-muted: #666666;
+  --color-border: #e0e0e0;
+  --color-danger: #d32f2f;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --font-sans: 'Hiragino Sans', 'Yu Gothic', 'Segoe UI', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  width: 100%;
+  padding: 0.6em 0.75em;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25em;
+}
+
+[role='alert'] {
+  color: var(--color-danger);
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border: 1px solid var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #fdecee;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
+.header-logo {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--color-primary);
+}
+
+.header-logo:hover {
+  text-decoration: none;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grid-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.grid-item > span,
+.grid-item > a {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-page {
+  max-width: 400px;
+  margin: 3rem auto;
+  padding: 2rem;
+}
+
+.auth-page form > div {
+  margin-bottom: 1rem;
+}
+
+.auth-page .btn-primary {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* ===== 管理画面 ===== */
+
+/* アプリと同じ配色のまま、運用中の画面であることが分かるようにする */
+.admin-badge {
+  display: inline-block;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.15em 0.6em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+
+.admin-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1.25rem;
+  font-size: 1.5rem;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.admin-nav a {
+  display: block;
+  padding: 0.5em 0.9em;
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.admin-nav a:hover {
+  background: var(--color-bg);
+  text-decoration: none;
+}
+
+.admin-nav a[aria-current='page'] {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.admin-nav .admin-nav-spacer {
+  margin-left: auto;
+}
+
+/* 登録・編集フォーム */
+.admin-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-form-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* 一覧テーブル */
+.admin-table {
+  width: 100%;
+  /* 列が窮屈になって文字が折り返されるのを防ぐ。狭い画面は親のスクロールで逃がす */
+  min-width: 640px;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+  /* 折り返すと狭い画面で1文字ずつ縦積みになるため、内容幅を優先して親でスクロールさせる */
+  white-space: nowrap;
+}
+
+.admin-table th {
+  background: var(--color-bg);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.03em;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table-scroll {
+  overflow-x: auto;
+}
+
+/* 一覧の行（カード形式） */
+.admin-list {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-list-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.admin-list-main {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.admin-list-body {
+  margin: 0 0 0.35rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* 状態表示 */
+.admin-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.15em 0.7em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  white-space: nowrap;
+}
+
+.admin-status-danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: #fdecee;
+}
+
+.admin-status-primary {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: #fdecee;
+}
+
+/* タブ */
+.admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.admin-tabs button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border-radius: var(--radius);
+  padding: 0.5em 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-tabs button[aria-selected='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.admin-section {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.admin-empty {
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.admin-note {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.admin-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.admin-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  font-weight: 600;
+}
+
+.admin-filter select {
+  width: auto;
+}

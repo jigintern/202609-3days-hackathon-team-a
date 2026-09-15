@@ -17,7 +17,7 @@ function Artists() {
   return (
     <main>
       <h1>アーティスト一覧</h1>
-      <ul>
+      <ul className="grid">
         {artists.map((artist) => (
           <ArtistListItem key={artist.id} artist={artist} onFollowChange={handleFollowChange} />
         ))}

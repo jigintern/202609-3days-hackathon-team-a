@@ -24,7 +24,7 @@ function ProfileSetup() {
   }
 
   return (
-    <main>
+    <main className="card auth-page">
       <h1>プロフィール登録</h1>
       <form onSubmit={handleSubmit}>
         <div>
@@ -39,7 +39,7 @@ function ProfileSetup() {
           />
         </div>
         {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? '登録中...' : '登録して始める'}
         </button>
       </form>

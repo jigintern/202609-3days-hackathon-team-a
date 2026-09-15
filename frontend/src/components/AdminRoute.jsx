@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import Layout from './Layout.jsx'
 import AdminNav from './AdminNav.jsx'
 
 function AdminRoute({ children }) {
@@ -20,18 +21,18 @@ function AdminRoute({ children }) {
   // サーバー側でも requireAdmin で弾いているので、ここは画面を出さないための措置
   if (profile?.role !== 'admin') {
     return (
-      <main>
-        <h1>管理画面</h1>
+      <Layout>
+        <h1 className="admin-title">管理画面</h1>
         <p role="alert">この画面は運営のみが利用できます。</p>
-      </main>
+      </Layout>
     )
   }
 
   return (
-    <main>
+    <Layout>
       <AdminNav />
       {children}
-    </main>
+    </Layout>
   )
 }
 

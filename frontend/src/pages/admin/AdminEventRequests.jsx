@@ -28,9 +28,12 @@ function AdminEventRequests() {
 
   return (
     <>
-      <h1>イベント追加申請</h1>
+      <h1 className="admin-title">
+        イベント追加申請
+        <span className="admin-badge">管理画面</span>
+      </h1>
 
-      <label>
+      <label className="admin-filter">
         状態で絞り込む
         <select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="pending">未対応</option>
@@ -45,36 +48,57 @@ function AdminEventRequests() {
       {loading && <p>読み込み中...</p>}
 
       {!loading && !error && (
-        <ul>
+        <ul className="admin-list">
           {requests.map((request) => (
-            <li key={request.id}>
-              <p>
-                <strong>{request.artistName}</strong> / {request.title}
-              </p>
-              <p>
-                会場: {request.venue || '未定'} ／ 開催日: {formatDateTime(request.startsAt)}
-              </p>
-              {request.note && <p>備考: {request.note}</p>}
-              <p>
-                申請者: {request.user?.displayName ?? '不明'} ／ 状態: {STATUS_LABEL[request.status]}
-              </p>
+            <li key={request.id} className="card admin-list-item">
+              <div className="admin-list-main">
+                <p className="admin-list-body">
+                  <strong>{request.artistName}</strong> ／ {request.title}
+                </p>
+                <p className="admin-meta">
+                  会場: {request.venue || '未定'} ／ 開催日: {formatDateTime(request.startsAt)}
+                </p>
+                {request.note && <p className="admin-meta">備考: {request.note}</p>}
+                <p className="admin-meta">
+                  申請者: {request.user?.displayName ?? '不明'}{' '}
+                  <span
+                    className={`admin-status${request.status === 'pending' ? ' admin-status-primary' : ''}`}
+                  >
+                    {STATUS_LABEL[request.status]}
+                  </span>
+                </p>
+              </div>
               {request.status === 'pending' && (
-                <>
-                  <button type="button" onClick={() => decide(request, 'approved')} disabled={pending}>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => decide(request, 'approved')}
+                    disabled={pending}
+                  >
                     承認する
                   </button>
-                  <button type="button" onClick={() => decide(request, 'rejected')} disabled={pending}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => decide(request, 'rejected')}
+                    disabled={pending}
+                  >
                     却下する
                   </button>
-                </>
+                </div>
               )}
             </li>
           ))}
         </ul>
       )}
 
-      {!loading && !error && requests.length === 0 && <p>該当する申請はありません。</p>}
-      <p>承認した申請は、イベント管理から実際のイベントとして登録してください。</p>
+      {!loading && !error && requests.length === 0 && (
+        <p className="admin-empty">該当する申請はありません。</p>
+      )}
+      <p className="admin-note">
+        承認した申請は、イベント管理から実際のイベントとして登録してください。
+      </p>
     </>
   )
 }

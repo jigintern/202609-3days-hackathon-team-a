@@ -25,40 +25,66 @@ function AdminUsers() {
 
   return (
     <>
-      <h1>ユーザー一覧</h1>
+      <h1 className="admin-title">
+        ユーザー一覧
+        <span className="admin-badge">管理画面</span>
+      </h1>
       {actionError && <p role="alert">{actionError}</p>}
-      <table>
-        <thead>
-          <tr>
-            <th>表示名</th>
-            <th>メールアドレス</th>
-            <th>権限</th>
-            <th>状態</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.displayName}</td>
-              <td>{user.email}</td>
-              <td>{user.role === 'admin' ? '運営' : '一般'}</td>
-              <td>{user.isSuspended ? '利用停止中' : '利用中'}</td>
-              <td>
-                {/* 自分を停止すると管理画面から締め出されるため、操作させない */}
-                {user.id === profile?.id ? (
-                  <span>自分</span>
-                ) : (
-                  <button type="button" onClick={() => toggleSuspended(user)} disabled={pending}>
-                    {user.isSuspended ? '停止を解除' : '利用停止にする'}
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {users.length === 0 && <p>ユーザーがいません。</p>}
+
+      {users.length === 0 ? (
+        <p className="admin-empty">ユーザーがいません。</p>
+      ) : (
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>表示名</th>
+                <th>メールアドレス</th>
+                <th>権限</th>
+                <th>状態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.displayName}</td>
+                  <td>{user.email}</td>
+                  <td>
+                    {user.role === 'admin' ? (
+                      <span className="admin-status admin-status-primary">運営</span>
+                    ) : (
+                      <span className="admin-status">一般</span>
+                    )}
+                  </td>
+                  <td>
+                    {user.isSuspended ? (
+                      <span className="admin-status admin-status-danger">利用停止中</span>
+                    ) : (
+                      <span className="admin-status">利用中</span>
+                    )}
+                  </td>
+                  <td>
+                    {/* 自分を停止すると管理画面から締め出されるため、操作させない */}
+                    {user.id === profile?.id ? (
+                      <span className="admin-note">自分</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => toggleSuspended(user)}
+                        disabled={pending}
+                      >
+                        {user.isSuspended ? '停止を解除' : '利用停止にする'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   )
 }

@@ -46,9 +46,12 @@ function AdminPosts() {
 
   return (
     <>
-      <h1>ポスト管理</h1>
+      <h1 className="admin-title">
+        ポスト管理
+        <span className="admin-badge">管理画面</span>
+      </h1>
 
-      <div role="tablist">
+      <div className="admin-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'posts'} onClick={() => setTab('posts')}>
           投稿（{data.posts.length}）
         </button>
@@ -65,44 +68,65 @@ function AdminPosts() {
       {tab === 'posts' && (
         <>
           {postError && <p role="alert">{postError}</p>}
-          <ul>
+          <ul className="admin-list">
             {data.posts.map((post) => (
-              <li key={post.id}>
-                <p>
-                  {post.type === 'official' ? '【公式】' : ''}
-                  {post.body}
-                </p>
-                <p>
-                  {post.author?.displayName} ／ {post.event?.title} ／ {formatDateTime(post.createdAt)}
-                </p>
-                <button type="button" onClick={() => removePost(post)} disabled={postPending}>
-                  削除する
-                </button>
+              <li key={post.id} className="card admin-list-item">
+                <div className="admin-list-main">
+                  <p className="admin-list-body">
+                    {post.type === 'official' && (
+                      <span className="admin-status admin-status-primary">公式</span>
+                    )}{' '}
+                    {post.body}
+                  </p>
+                  <p className="admin-meta">
+                    {post.author?.displayName} ／ {post.event?.title} ／{' '}
+                    {formatDateTime(post.createdAt)}
+                  </p>
+                </div>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => removePost(post)}
+                    disabled={postPending}
+                  >
+                    削除する
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
-          {data.posts.length === 0 && <p>投稿はありません。</p>}
+          {data.posts.length === 0 && <p className="admin-empty">投稿はありません。</p>}
         </>
       )}
 
       {tab === 'messages' && (
         <>
           {messageError && <p role="alert">{messageError}</p>}
-          <ul>
+          <ul className="admin-list">
             {data.messages.map((message) => (
-              <li key={message.id}>
-                <p>{message.body}</p>
-                <p>
-                  {message.author?.displayName} ／ {message.event?.title} ／{' '}
-                  {formatDateTime(message.createdAt)}
-                </p>
-                <button type="button" onClick={() => removeMessage(message)} disabled={messagePending}>
-                  削除する
-                </button>
+              <li key={message.id} className="card admin-list-item">
+                <div className="admin-list-main">
+                  <p className="admin-list-body">{message.body}</p>
+                  <p className="admin-meta">
+                    {message.author?.displayName} ／ {message.event?.title} ／{' '}
+                    {formatDateTime(message.createdAt)}
+                  </p>
+                </div>
+                <div className="admin-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => removeMessage(message)}
+                    disabled={messagePending}
+                  >
+                    削除する
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
-          {data.messages.length === 0 && <p>発言はありません。</p>}
+          {data.messages.length === 0 && <p className="admin-empty">発言はありません。</p>}
         </>
       )}
     </>

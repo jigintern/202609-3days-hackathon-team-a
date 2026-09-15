@@ -6,7 +6,7 @@ import { ApiError } from '../lib/api.js'
 import { formatDateTime } from '../lib/formatDate.js'
 
 function Home() {
-  const { profile, signOut } = useAuth()
+  const { profile } = useAuth()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -30,18 +30,7 @@ function Home() {
 
   return (
     <main>
-      <header>
-        <h1>推し活アプリ</h1>
-        <p>ようこそ、{profile?.displayName ?? 'ゲスト'}さん</p>
-        <button type="button" onClick={signOut}>
-          ログアウト
-        </button>
-        <nav>
-          <Link to="/artists">アーティスト一覧</Link>
-          <Link to="/event-requests/new">イベント追加申請</Link>
-          {profile?.role === 'admin' && <Link to="/admin/users">管理画面</Link>}
-        </nav>
-      </header>
+      <p>ようこそ、{profile?.displayName ?? 'ゲスト'}さん</p>
 
       <h2>フォロー中のイベント</h2>
 
@@ -56,9 +45,9 @@ function Home() {
       )}
 
       {events.length > 0 && (
-        <ul>
+        <ul className="grid">
           {events.map((event) => (
-            <li key={event.id}>
+            <li key={event.id} className="card">
               <Link to={`/events/${event.id}`}>{event.title}</Link>
               <p>{event.artist.name}</p>
               <p>{formatDateTime(event.startsAt)}</p>

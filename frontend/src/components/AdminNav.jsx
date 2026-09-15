@@ -8,21 +8,17 @@ const LINKS = [
   { to: '/admin/event-requests', label: 'イベント追加申請' },
 ]
 
-const HOME = { to: '/', label: 'アプリに戻る' }
-
 function AdminNav() {
   return (
     <nav aria-label="管理メニュー">
-      <ul>
+      <ul className="admin-nav">
         {LINKS.map((link) => (
           <li key={link.to}>
-            <NavLink to={link.to} style={({ isActive }) => ({ fontWeight: isActive ? 'bold' : 'normal' })}>
-              {link.label}
-            </NavLink>
+            <NavLink to={link.to}>{link.label}</NavLink>
           </li>
         ))}
-        <li>
-          <NavLink to={HOME.to}>{HOME.label}</NavLink>
+        <li className="admin-nav-spacer">
+          <NavLink to="/">アプリに戻る</NavLink>
         </li>
       </ul>
     </nav>
