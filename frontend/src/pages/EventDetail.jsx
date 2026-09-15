@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
-import { listPosts, createPost } from '../api/posts.js'
+import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
 import { ApiError } from '../lib/api.js'
 
 const POST_MAX_LENGTH = 280
@@ -81,6 +81,8 @@ function UserPostsTab({ eventId }) {
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [reactionPending, setReactionPending] = useState(() => new Set())
+  const [reactionError, setReactionError] = useState(null)
   const requestRef = useRef(0)
 
   function fetchFirstPage() {
@@ -128,13 +130,51 @@ function UserPostsTab({ eventId }) {
     }
   }
 
+  function applyReaction(postId, reacted) {
+    setPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, reactedByMe: reacted, reactionCount: post.reactionCount + (reacted ? 1 : -1) }
+          : post,
+      ),
+    )
+  }
+
+  async function toggleReaction(post) {
+    if (reactionPending.has(post.id)) return
+    const reacted = !post.reactedByMe
+    const requestId = requestRef.current
+
+    setReactionPending((prev) => new Set(prev).add(post.id))
+    setReactionError(null)
+    applyReaction(post.id, reacted)
+
+    try {
+      await (reacted ? addReaction(post.id) : removeReaction(post.id))
+    } catch (err) {
+      // 一覧が再取得されていた場合、楽観更新の取り消しは新しいデータを壊すので行わない
+      if (requestRef.current === requestId) applyReaction(post.id, !reacted)
+      setReactionError(err instanceof ApiError ? err.message : 'いいねの更新に失敗しました')
+    } finally {
+      setReactionPending((prev) => {
+        const next = new Set(prev)
+        next.delete(post.id)
+        return next
+      })
+    }
+  }
+
   async function loadMore() {
     const requestId = requestRef.current
     setLoadingMore(true)
     try {
       const body = await listPosts(eventId, { type: 'fan', sort, cursor: nextCursor })
       if (requestRef.current !== requestId) return
-      setPosts((prev) => [...prev, ...body.posts])
+      // カーソルが配列オフセットのため、並び順が変わると同じ投稿が再度返ることがある
+      setPosts((prev) => {
+        const seen = new Set(prev.map((post) => post.id))
+        return [...prev, ...body.posts.filter((post) => !seen.has(post.id))]
+      })
       setNextCursor(body.nextCursor)
     } catch (err) {
       if (requestRef.current !== requestId) return
@@ -174,6 +214,7 @@ function UserPostsTab({ eventId }) {
 
       {loading && <p>読み込み中...</p>}
       {error && <p role="alert">{error}</p>}
+      {reactionError && <p role="alert">{reactionError}</p>}
       {!loading && !error && posts.length === 0 && <p>投稿はまだありません。</p>}
 
       {posts.length > 0 && (
@@ -189,9 +230,17 @@ function UserPostsTab({ eventId }) {
                   ))}
                 </div>
               )}
-              <small>
-                いいね {post.reactionCount} ・ {formatDateTime(post.createdAt)}
-              </small>
+              <div>
+                <button
+                  type="button"
+                  aria-pressed={post.reactedByMe}
+                  disabled={reactionPending.has(post.id)}
+                  onClick={() => toggleReaction(post)}
+                >
+                  {post.reactedByMe ? '♥' : '♡'} {post.reactionCount}
+                </button>
+                <small>{formatDateTime(post.createdAt)}</small>
+              </div>
             </li>
           ))}
         </ul>
