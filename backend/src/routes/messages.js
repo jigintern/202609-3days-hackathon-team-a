@@ -15,51 +15,85 @@ const createMessageSchema = z.object({
   body: z.string().trim().min(1).max(env.chatMaxLength),
 });
 
-function serializeMessage(message) {
+function serializeMessage(message, viewerId) {
   return {
     id: message.id,
     eventId: message.eventId,
     body: message.body,
     authorDisplayName: message.user.displayName,
     authorId: message.userId,
+    isMine: message.userId === viewerId,
     createdAt: message.createdAt,
   };
+}
+
+/// ポーリングでは新着しか届かないため、削除された発言のidも併せて返す。
+/// これが無いと他人が消した発言が各クライアントに残り続ける。
+async function findDeletedIds(eventId, deletedSince) {
+  if (!deletedSince) return [];
+
+  const since = new Date(String(deletedSince));
+  if (Number.isNaN(since.getTime())) {
+    throw Errors.validation("deletedSinceの形式が不正です");
+  }
+
+  const deleted = await prisma.chatMessage.findMany({
+    where: { eventId, deletedAt: { gt: since } },
+    select: { id: true },
+  });
+
+  return deleted.map((message) => message.id);
 }
 
 eventMessagesRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const include = { user: { select: { displayName: true } } };
+    // 取得処理の前の時刻を返す。取りこぼしを防ぐため、この後に起きた削除は次回に回す
+    const polledAt = new Date();
+    const deletedIds = await findDeletedIds(req.params.eventId, req.query.deletedSince);
 
     if (req.query.after) {
       const anchor = await prisma.chatMessage.findUnique({
         where: { id: String(req.query.after) },
-        select: { createdAt: true },
+        select: { id: true, createdAt: true },
       });
       if (!anchor) throw Errors.notFound("発言が見つかりません");
 
+      // createdAt だけで比較すると同一ミリ秒の発言を取りこぼすため、(createdAt, id) の複合キーで送る
       const messages = await prisma.chatMessage.findMany({
         where: {
           eventId: req.params.eventId,
           deletedAt: null,
-          createdAt: { gt: anchor.createdAt },
+          OR: [
+            { createdAt: { gt: anchor.createdAt } },
+            { createdAt: anchor.createdAt, id: { gt: anchor.id } },
+          ],
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
         include,
       });
 
-      res.json({ messages: messages.map(serializeMessage) });
+      res.json({
+        messages: messages.map((m) => serializeMessage(m, req.user.id)),
+        deletedIds,
+        polledAt,
+      });
       return;
     }
 
     const latest = await prisma.chatMessage.findMany({
       where: { eventId: req.params.eventId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: INITIAL_MESSAGE_LIMIT,
       include,
     });
 
-    res.json({ messages: latest.reverse().map(serializeMessage) });
+    res.json({
+      messages: latest.reverse().map((m) => serializeMessage(m, req.user.id)),
+      deletedIds,
+      polledAt,
+    });
   })
 );
 
@@ -86,7 +120,7 @@ eventMessagesRouter.post(
       include: { user: { select: { displayName: true } } },
     });
 
-    res.status(201).json({ message: serializeMessage(message) });
+    res.status(201).json({ message: serializeMessage(message, req.user.id) });
   })
 );
 

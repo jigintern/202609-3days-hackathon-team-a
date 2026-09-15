@@ -248,9 +248,15 @@ MVPの中心となる画面。イベント情報の表示と、3つのタブで�
 - 一覧に入る前にマスターパスワードによる再認証を挟む。ログイン中であっても必須とする
 - パスワードは一覧・詳細ではマスク表示とし、コピーボタンで取り出す
 
-**保管方式は未決。** 以下の2案があり、本書では案Aを推奨する。
+**保管方式は案Bに決定（2026-09-15）。** API仕様と暗号仕様は [VAULT_API.md](./VAULT_API.md) を参照。
 
-**案A: ローカル保存（推奨）**
+案Aでも暗号化の実装は同じく必要であり、案Bとの差は「暗号文の置き場所がIndexedDBかAPIか」だけである。サーバーには暗号文しか渡らないため案Aと安全性はほぼ同等のまま、端末間同期とブラウザのデータ削除への耐性が得られるため案Bを採った。
+
+以下、検討時の2案を記録として残す。
+
+**案A: ローカル保存（検討したが不採用）**
+
+> この案は採用していない。実装するのは案Bであり、実装内容は [VAULT_API.md](./VAULT_API.md) に従うこと。
 
 認証情報は端末から出さない。ブラウザのIndexedDBに暗号化して保存する。
 
@@ -262,7 +268,7 @@ MVPの中心となる画面。イベント情報の表示と、3つのタブで�
 
 欠点は、端末間で同期できないこと、ブラウザのサイトデータ削除で消えること、マスターパスワードを忘れると復旧できないこと。そのため暗号化ファイルとしてエクスポートする機能を用意し、登録画面で「この端末にのみ保存される」「忘れると復旧できない」旨を明示する。
 
-**案B: サーバー保存（クライアント暗号化）**
+**案B: サーバー保存（クライアント暗号化）← 採用**
 
 暗号化はクライアントで行い、暗号化済みのデータのみをサーバーに保存する。同期でき、データも消えない。サーバーは復号鍵を持たないため、漏えいしても内容は読めない。実装は一段複雑になる。
 
@@ -311,7 +317,7 @@ MVPの中心となる画面。イベント情報の表示と、3つのタブで�
 
 ## 6. データベース設計
 
-Prismaのスキーマとして記述する。案Aを採る場合、パスワード管理に関するテーブルは存在しない。
+Prismaのスキーマとして記述する。パスワード管理は案Bを採ったため `VaultProfile` / `VaultEntry` を持つ（4.7および [VAULT_API.md](./VAULT_API.md) を参照）。
 
 ```prisma
 generator client {
@@ -531,11 +537,13 @@ model EventRequest {
 
 | メソッド | パス | 認証 | 説明 |
 | --- | --- | --- | --- |
-| GET | `/api/events/:eventId/posts` | 必要 | 投稿一覧。`?type=official\|fan`、`?sort=reactions\|latest`、`?cursor=`。各件に `reactionCount` と `reactedByMe` を含める |
+| GET | `/api/events/:eventId/posts` | 必要 | 投稿一覧。`?type=official\|fan`、`?sort=reactions\|latest`、`?cursor=`。各件に `reactionCount` / `reactedByMe` / `authorId` / `isMine` を含める |
 | POST | `/api/events/:eventId/posts` | 必要 | 投稿を作成。`{ body, imageUrls? }`。クールダウン中は429 |
 | DELETE | `/api/posts/:postId` | 必要 | 自分の投稿を削除（論理削除） |
-| POST | `/api/posts/:postId/reactions` | 必要 | いいねを付ける |
-| DELETE | `/api/posts/:postId/reactions` | 必要 | いいねを外す |
+| POST | `/api/posts/:postId/reactions` | 必要 | いいねを付ける。更新後の `{ reactionCount, reactedByMe }` を返す |
+| DELETE | `/api/posts/:postId/reactions` | 必要 | いいねを外す。更新後の `{ reactionCount, reactedByMe }` を返す |
+
+削除ボタンの出し分けには `isMine` を使う。リアクションの両エンドポイントは更新後の状態を返すため、フロントは楽観更新に頼らず実数を反映できる。
 | POST | `/api/uploads/images` | 必要 | 画像をSupabase Storageへ保存し、URLを返す |
 
 `type=official` の一覧は `sort` を受け付けず、常に新着順で返す。
@@ -544,9 +552,18 @@ model EventRequest {
 
 | メソッド | パス | 認証 | 説明 |
 | --- | --- | --- | --- |
-| GET | `/api/events/:eventId/messages` | 必要 | 発言一覧。初回は最新N件、以降は `?after=<messageId>` で差分のみを取得する（ポーリング用） |
+| GET | `/api/events/:eventId/messages` | 必要 | 発言一覧。初回は最新N件、以降は `?after=<messageId>` で差分のみを取得する（ポーリング用）。`?deletedSince=<ISO日時>` を付けると、その時刻以降に削除された発言のidも返す |
 | POST | `/api/events/:eventId/messages` | 必要 | 発言を作成。`{ body }`。クールダウン中は429 |
 | DELETE | `/api/messages/:messageId` | 必要 | 自分の発言を削除（論理削除） |
+
+レスポンスは `{ messages, deletedIds, polledAt }` の形。ポーリングの手順は次のとおり。
+
+1. 初回は `after` なしで呼び、`polledAt` を保持する
+2. 以降は `?after=<最後の発言id>&deletedSince=<前回のpolledAt>` で呼ぶ
+3. `messages` を末尾に足し、`deletedIds` に含まれる発言を画面から取り除く
+4. 返ってきた `polledAt` を次回の `deletedSince` として保持する
+
+`deletedIds` を反映しないと、他人が削除した発言が各クライアントに残り続ける。差分は `createdAt` と `id` の複合キーで取得しているため、同一ミリ秒に投稿された発言も取りこぼさない。
 
 ### イベント追加申請
 
@@ -554,6 +571,20 @@ model EventRequest {
 | --- | --- | --- | --- |
 | POST | `/api/event-requests` | 必要 | 申請を作成。`{ artistName, title, venue?, startsAt?, note? }` |
 | GET | `/api/event-requests/mine` | 必要 | 自分の申請一覧と状態 |
+
+### パスワード管理（Vault）
+
+リクエスト・レスポンスの詳細と暗号仕様は [VAULT_API.md](./VAULT_API.md) を参照。サーバーは暗号文のみを保持し、中身を読めない。
+
+| メソッド | パス | 認証 | 説明 |
+| --- | --- | --- | --- |
+| GET | `/api/vault/profile` | 必要 | 鍵導出パラメータとverifierを取得。未設定なら404 |
+| POST | `/api/vault/profile` | 必要 | 初回セットアップ。既に存在する場合は409 |
+| GET | `/api/vault/entries` | 必要 | 保管項目を全件取得（暗号文のまま） |
+| POST | `/api/vault/entries` | 必要 | 項目を追加。`{ iv, cipherText }` |
+| PATCH | `/api/vault/entries/:entryId` | 必要 | 項目を更新（新しいIVで暗号化し直す） |
+| DELETE | `/api/vault/entries/:entryId` | 必要 | 項目を削除 |
+| DELETE | `/api/vault` | 必要 | 保管庫ごと削除。マスターパスワードを忘れた場合の作り直し用 |
 
 ### 管理（すべて admin 限定）
 
@@ -587,7 +618,7 @@ model EventRequest {
 
 ## 9. 未決事項
 
-- [ ] パスワードの保管方式（案A=ローカル保存 を推奨。案B=サーバー保存の場合はテーブルとAPIを追加）
+- [x] パスワードの保管方式 → 案B（サーバー保存・クライアント暗号化）に決定。[VAULT_API.md](./VAULT_API.md) を参照
 - [ ] 投稿の最大文字数（暫定280文字）
 - [ ] 投稿・チャットのクールダウン秒数（暫定30秒／3秒）
 - [ ] 画像の形式・枚数・サイズ上限（暫定 jpeg/png/webp、4枚、5MB）

@@ -1,37 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { getArtists } from '../api/artists.js'
-import FollowButton from '../components/FollowButton.jsx'
+import { useFetch } from '../hooks/useFetch.js'
+import ArtistListItem from '../components/ArtistListItem.jsx'
 
 function Artists() {
-  const [artists, setArtists] = useState(null)
-  const [error, setError] = useState(null)
+  const fetchArtists = useCallback(() => getArtists().then((body) => body?.artists ?? []), [])
+  const { data: artists, setData: setArtists, loading, error } = useFetch(fetchArtists, [])
 
-  useEffect(() => {
-    getArtists()
-      .then((body) => setArtists(body.artists))
-      .catch((err) => setError(err.message ?? '取得に失敗しました'))
-  }, [])
+  function handleFollowChange(artistId, isFollowing) {
+    setArtists((prev) => prev.map((a) => (a.id === artistId ? { ...a, isFollowing } : a)))
+  }
 
   if (error) return <p role="alert">{error}</p>
-  if (!artists) return <p>読み込み中...</p>
+  if (loading) return <p>読み込み中...</p>
 
   return (
     <main>
       <h1>アーティスト一覧</h1>
       <ul className="grid">
         {artists.map((artist) => (
-          <li key={artist.id} className="card grid-item">
-            <span>{artist.name}</span>
-            <FollowButton
-              artistId={artist.id}
-              isFollowing={artist.isFollowing}
-              onChange={(isFollowing) =>
-                setArtists((prev) =>
-                  prev.map((a) => (a.id === artist.id ? { ...a, isFollowing } : a))
-                )
-              }
-            />
-          </li>
+          <ArtistListItem key={artist.id} artist={artist} onFollowChange={handleFollowChange} />
         ))}
       </ul>
     </main>

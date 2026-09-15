@@ -1,34 +1,19 @@
-import { useState } from 'react'
 import { followArtist, unfollowArtist } from '../api/artists.js'
+import { useAsyncAction } from '../hooks/useAsyncAction.js'
 
 function FollowButton({ artistId, isFollowing, onChange }) {
-  const [pending, setPending] = useState(false)
-  const [error, setError] = useState(null)
-
-  async function handleClick() {
-    setError(null)
-    setPending(true)
-    try {
-      if (isFollowing) {
-        await unfollowArtist(artistId)
-        onChange(false)
-      } else {
-        await followArtist(artistId)
-        onChange(true)
-      }
-    } catch (err) {
-      setError(err.message ?? '操作に失敗しました')
-    } finally {
-      setPending(false)
-    }
-  }
+  const { run, pending, error } = useAsyncAction(async () => {
+    const action = isFollowing ? unfollowArtist : followArtist
+    await action(artistId)
+    onChange(!isFollowing)
+  })
 
   return (
     <>
       <button
         type="button"
         className={isFollowing ? 'btn-secondary' : 'btn-primary'}
-        onClick={handleClick}
+        onClick={run}
         disabled={pending}
       >
         {isFollowing ? 'フォロー中' : 'フォローする'}

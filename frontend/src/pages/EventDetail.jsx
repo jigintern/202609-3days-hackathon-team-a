@@ -1,14 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
 import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
+import { uploadImages } from '../api/uploads.js'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 
 const POST_MAX_LENGTH = 280
+const IMAGE_MAX_COUNT = 4
+const IMAGE_MAX_SIZE_MB = 5
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHAT_MAX_LENGTH = 500
 const CHAT_POLL_INTERVAL_MS = 3000
+const CHAT_LIST_MAX_HEIGHT_PX = 320
+const SCROLL_BOTTOM_THRESHOLD_PX = 40
 
 const TABS = [
   { key: 'official', label: '公式アカウント' },
@@ -83,11 +89,14 @@ function UserPostsTab({ eventId }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [draft, setDraft] = useState('')
+  const [files, setFiles] = useState([])
+  const [uploadedUrls, setUploadedUrls] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [reactionPending, setReactionPending] = useState(() => new Set())
   const [reactionError, setReactionError] = useState(null)
   const requestRef = useRef(0)
+  const fileInputRef = useRef(null)
 
   function fetchFirstPage() {
     const requestId = ++requestRef.current
@@ -116,6 +125,37 @@ function UserPostsTab({ eventId }) {
     }
   }, [eventId, sort])
 
+  function clearFiles() {
+    setFiles([])
+    setUploadedUrls(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files)
+    setSubmitError(null)
+    // 選択し直した場合は、前回アップロード済みのURLを使い回さない
+    setUploadedUrls(null)
+
+    if (selected.length > IMAGE_MAX_COUNT) {
+      setSubmitError(`画像は${IMAGE_MAX_COUNT}枚までです`)
+      clearFiles()
+      return
+    }
+    if (selected.some((file) => !ALLOWED_IMAGE_TYPES.includes(file.type))) {
+      setSubmitError('画像はjpeg / png / webpのみ添付できます')
+      clearFiles()
+      return
+    }
+    if (selected.some((file) => file.size > IMAGE_MAX_SIZE_MB * 1024 * 1024)) {
+      setSubmitError(`画像は1枚あたり${IMAGE_MAX_SIZE_MB}MBまでです`)
+      clearFiles()
+      return
+    }
+
+    setFiles(selected)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     const trimmed = draft.trim()
@@ -124,8 +164,15 @@ function UserPostsTab({ eventId }) {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      await createPost(eventId, { body: trimmed })
+      // クールダウン等で投稿だけ失敗した際に再アップロードしないよう、URLを保持して再利用する
+      let imageUrls = uploadedUrls
+      if (!imageUrls && files.length > 0) {
+        imageUrls = (await uploadImages(files)).urls
+        setUploadedUrls(imageUrls)
+      }
+      await createPost(eventId, { body: trimmed, imageUrls: imageUrls ?? undefined })
       setDraft('')
+      clearFiles()
       fetchFirstPage()
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : '投稿に失敗しました')
@@ -201,6 +248,23 @@ function UserPostsTab({ eventId }) {
         <div>
           {draft.length} / {POST_MAX_LENGTH}
         </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept={ALLOWED_IMAGE_TYPES.join(',')}
+          multiple
+          onChange={handleFileChange}
+          disabled={submitting}
+        />
+        {files.length > 0 && (
+          <ul>
+            {files.map((file, index) => (
+              <li key={index}>{file.name}</li>
+            ))}
+          </ul>
+        )}
+
         {submitError && <p role="alert">{submitError}</p>}
         <button type="submit" disabled={submitting || draft.trim().length === 0}>
           {submitting ? '投稿中...' : '投稿する'}
@@ -268,6 +332,25 @@ function ChatTab({ eventId }) {
   const [sending, setSending] = useState(false)
   const [actionError, setActionError] = useState(null)
   const lastMessageRef = useRef(null)
+  const listRef = useRef(null)
+  const atBottomRef = useRef(true)
+
+  // 過去ログを読んでいる最中に新着で勝手にスクロールしないよう、最下部付近にいるかを覚えておく
+  function handleListScroll() {
+    const list = listRef.current
+    if (!list) return
+    atBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < SCROLL_BOTTOM_THRESHOLD_PX
+  }
+
+  function scrollToBottom() {
+    const list = listRef.current
+    if (list) list.scrollTop = list.scrollHeight
+  }
+
+  // 描画前にスクロールしないと、一瞬先頭が見えてから飛ぶ動きになる
+  useLayoutEffect(() => {
+    if (atBottomRef.current) scrollToBottom()
+  }, [messages])
 
   function mergeMessages(incoming) {
     if (incoming.length === 0) return
@@ -311,6 +394,7 @@ function ChatTab({ eventId }) {
     setLoading(true)
     setMessages([])
     lastMessageRef.current = null
+    atBottomRef.current = true
     listMessages(eventId)
       .then((body) => {
         if (cancelled) return
@@ -345,7 +429,11 @@ function ChatTab({ eventId }) {
     try {
       const body = await createMessage(eventId, { body: trimmed })
       setDraft('')
+      // 自分の発言は、過去ログを見ていた場合でも必ず見えるようにする。
+      // ポーリングが先に取得済みで一覧が更新されない場合もあるため、この場でもスクロールする
+      atBottomRef.current = true
       mergeMessages([body.message])
+      scrollToBottom()
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : '送信に失敗しました')
     } finally {
@@ -371,7 +459,11 @@ function ChatTab({ eventId }) {
       {!loading && !error && messages.length === 0 && <p>まだ発言はありません。</p>}
 
       {messages.length > 0 && (
-        <ul>
+        <ul
+          ref={listRef}
+          onScroll={handleListScroll}
+          style={{ maxHeight: CHAT_LIST_MAX_HEIGHT_PX, overflowY: 'auto' }}
+        >
           {messages.map((message) => (
             <li key={message.id}>
               <p>

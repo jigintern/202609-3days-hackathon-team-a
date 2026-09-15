@@ -160,7 +160,8 @@ label {
   min-width: 0;
 }
 
-.grid-item > span {
+.grid-item > span,
+.grid-item > a {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
