@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum PostType {
+  official
+  fan
+}
+
+enum RequestStatus {
+  pending
+  approved
+  rejected
+}
+
+/// Supabase Auth のユーザーと1対1。id には auth 側のユーザーid（JWTの sub）をそのまま入れる。
+/// パスワードは Supabase Auth が持つため、ここには保存しない。
+model User {
+  id          String   @id
+  email       String   @unique
+  displayName String
+  role        Role     @default(user)
+  isSuspended Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  follows       Follow[]
+  posts         Post[]
+  reactions     Reaction[]
+  messages      ChatMessage[]
+  eventRequests EventRequest[]
+}
+
+model Artist {
+  id          String   @id @default(uuid())
+  name        String
+  nameKana    String?
+  description String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  events  Event[]
+  follows Follow[]
+}
+
+model Follow {
+  userId    String
+  artistId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([userId, artistId])
+}
+
+/// 公演単位。同一ツアーの各公演は別レコードとして扱う
+model Event {
+  id         String   @id @default(uuid())
+  artistId   String
+  title      String
+  venue      String
+  prefecture String?
+  startsAt   DateTime
+  createdAt  DateTime @default(now())
+
+  artist   Artist        @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  posts    Post[]
+  messages ChatMessage[]
+
+  @@index([artistId, startsAt])
+}
+
+model Post {
+  id        String    @id @default(uuid())
+  eventId   String
+  userId    String
+  type      PostType  @default(fan)
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  event     Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id])
+  images    PostImage[]
+  reactions Reaction[]
+
+  @@index([eventId, type, createdAt])
+}
+
+model PostImage {
+  id       String @id @default(uuid())
+  postId   String
+  url      String
+  position Int    @default(0)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+/// いいね。1ユーザーにつき1投稿1件
+model Reaction {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model ChatMessage {
+  id        String    @id @default(uuid())
+  eventId   String
+  userId    String
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([eventId, createdAt])
+}
+
+model EventRequest {
+  id         String        @id @default(uuid())
+  userId     String
+  artistName String
+  title      String
+  venue      String?
+  startsAt   DateTime?
+  note       String?
+  status     RequestStatus @default(pending)
+  createdAt  DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status, createdAt])
+}
