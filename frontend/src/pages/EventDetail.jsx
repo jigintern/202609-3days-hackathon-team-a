@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
 import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
@@ -9,6 +9,8 @@ import { ApiError } from '../lib/api.js'
 const POST_MAX_LENGTH = 280
 const CHAT_MAX_LENGTH = 500
 const CHAT_POLL_INTERVAL_MS = 3000
+const CHAT_LIST_MAX_HEIGHT_PX = 320
+const SCROLL_BOTTOM_THRESHOLD_PX = 40
 
 const TABS = [
   { key: 'official', label: '公式アカウント' },
@@ -268,6 +270,25 @@ function ChatTab({ eventId }) {
   const [sending, setSending] = useState(false)
   const [actionError, setActionError] = useState(null)
   const lastMessageRef = useRef(null)
+  const listRef = useRef(null)
+  const atBottomRef = useRef(true)
+
+  // 過去ログを読んでいる最中に新着で勝手にスクロールしないよう、最下部付近にいるかを覚えておく
+  function handleListScroll() {
+    const list = listRef.current
+    if (!list) return
+    atBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < SCROLL_BOTTOM_THRESHOLD_PX
+  }
+
+  function scrollToBottom() {
+    const list = listRef.current
+    if (list) list.scrollTop = list.scrollHeight
+  }
+
+  // 描画前にスクロールしないと、一瞬先頭が見えてから飛ぶ動きになる
+  useLayoutEffect(() => {
+    if (atBottomRef.current) scrollToBottom()
+  }, [messages])
 
   function mergeMessages(incoming) {
     if (incoming.length === 0) return
@@ -311,6 +332,7 @@ function ChatTab({ eventId }) {
     setLoading(true)
     setMessages([])
     lastMessageRef.current = null
+    atBottomRef.current = true
     listMessages(eventId)
       .then((body) => {
         if (cancelled) return
@@ -345,7 +367,11 @@ function ChatTab({ eventId }) {
     try {
       const body = await createMessage(eventId, { body: trimmed })
       setDraft('')
+      // 自分の発言は、過去ログを見ていた場合でも必ず見えるようにする。
+      // ポーリングが先に取得済みで一覧が更新されない場合もあるため、この場でもスクロールする
+      atBottomRef.current = true
       mergeMessages([body.message])
+      scrollToBottom()
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : '送信に失敗しました')
     } finally {
@@ -371,7 +397,11 @@ function ChatTab({ eventId }) {
       {!loading && !error && messages.length === 0 && <p>まだ発言はありません。</p>}
 
       {messages.length > 0 && (
-        <ul>
+        <ul
+          ref={listRef}
+          onScroll={handleListScroll}
+          style={{ maxHeight: CHAT_LIST_MAX_HEIGHT_PX, overflowY: 'auto' }}
+        >
           {messages.map((message) => (
             <li key={message.id}>
               <p>
