@@ -25,19 +25,31 @@ const createPostSchema = z.object({
 
 // 並び順のキー。カーソルにこれを入れることで、ページ取得の合間に投稿が
 // 増減しても境界がずれない（降順なので比較結果は反転させる）
-function buildSortKey(post, sort) {
+function buildSortKey(post, { snapshotAt, reactionCount }) {
   return {
-    reactionCount: sort === "reactions" ? post.reactions.length : 0,
+    snapshotAt: snapshotAt.toISOString(),
+    reactionCount,
     createdAt: post.createdAt.toISOString(),
     id: post.id,
   };
 }
 
+// snapshotAt は並びの基準時刻を運ぶだけで、順序そのものには関与しない
 function compareSortKeys(a, b) {
   if (a.reactionCount !== b.reactionCount) return b.reactionCount - a.reactionCount;
   if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
   if (a.id === b.id) return 0;
   return a.id < b.id ? 1 : -1;
+}
+
+function readCursor(raw) {
+  const cursor = decodeCursor(raw);
+  if (!cursor) return null;
+
+  const snapshotAt = new Date(cursor.snapshotAt);
+  if (Number.isNaN(snapshotAt.getTime())) return null;
+
+  return { ...cursor, snapshotAt };
 }
 
 function serializePost(post, viewerId) {
@@ -53,8 +65,9 @@ function serializePost(post, viewerId) {
     authorId: post.userId,
     authorDisplayName: post.user.displayName,
     isMine: post.userId === viewerId,
-    reactionCount: post.reactions.length,
-    reactedByMe: post.reactions.some((r) => r.userId === viewerId),
+    // 表示する件数は現在値。並び順だけをスナップショット時点で固定する
+    reactionCount: post._count.reactions,
+    reactedByMe: post.reactions.length > 0,
     createdAt: post.createdAt,
   };
 }
@@ -79,17 +92,50 @@ eventPostsRouter.get(
         : "reactions";
     const limit = parseLimit(req.query.limit);
 
+    // いいね順は順位の基準そのものが動くため、都度並べ直すと順位が上がった投稿が
+    // カーソルを追い越し、一度も表示されないまま飛ばされる。そこで最初のページを
+    // 取得した時刻をカーソルに持たせ、ページ送りの間はその時点のいいね数で順位を決める。
+    const cursor = readCursor(req.query.cursor);
+    const snapshotAt = cursor?.snapshotAt ?? new Date();
+
     const posts = await prisma.post.findMany({
       where: { eventId: req.params.eventId, type, deletedAt: null },
-      include: { images: true, reactions: true, user: { select: { displayName: true } } },
+      include: {
+        images: true,
+        user: { select: { displayName: true } },
+        _count: { select: { reactions: true } },
+        // 全リアクション行を読むと投稿数×いいね数だけ膨らむため、自分の分だけ取る
+        reactions: { where: { userId: req.user.id }, select: { userId: true } },
+      },
     });
 
+    const snapshotCounts =
+      sort === "reactions" && posts.length > 0
+        ? await prisma.reaction.groupBy({
+            by: ["postId"],
+            where: {
+              postId: { in: posts.map((post) => post.id) },
+              createdAt: { lte: snapshotAt },
+            },
+            _count: { _all: true },
+          })
+        : [];
+    const snapshotCountByPostId = new Map(
+      snapshotCounts.map((row) => [row.postId, row._count._all])
+    );
+
     const sorted = posts
-      .map((post) => ({ value: post, key: buildSortKey(post, sort) }))
+      .map((post) => ({
+        value: post,
+        key: buildSortKey(post, {
+          snapshotAt,
+          reactionCount: sort === "reactions" ? snapshotCountByPostId.get(post.id) ?? 0 : 0,
+        }),
+      }))
       .sort((a, b) => compareSortKeys(a.key, b.key));
 
     const { items, nextCursor } = paginateByKey(sorted, {
-      cursor: decodeCursor(req.query.cursor),
+      cursor,
       limit,
       compareKeys: compareSortKeys,
     });
@@ -129,7 +175,12 @@ eventPostsRouter.post(
           create: (parsed.data.imageUrls ?? []).map((url, position) => ({ url, position })),
         },
       },
-      include: { images: true, reactions: true, user: { select: { displayName: true } } },
+      include: {
+        images: true,
+        user: { select: { displayName: true } },
+        _count: { select: { reactions: true } },
+        reactions: { where: { userId: req.user.id }, select: { userId: true } },
+      },
     });
 
     res.status(201).json({ post: serializePost(post, req.user.id) });

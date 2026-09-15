@@ -500,6 +500,28 @@ model EventRequest {
 | 409 | 重複（メールアドレスなど） |
 | 429 | クールダウン中 |
 
+### 設定値の配信
+
+4.5の制限値はすべて暫定であり、`backend/.env` で変更する。フロントに同じ値を直書きすると片方だけ変わってずれるため、次のエンドポイントから取得して使う。
+
+| メソッド | パス | 認証 | 説明 |
+| --- | --- | --- | --- |
+| GET | `/api/config` | 不要 | 文字数・クールダウン・画像の上限などクライアント向けの設定値を返す |
+
+```json
+{
+  "post": { "maxLength": 280, "cooldownSeconds": 30 },
+  "chat": { "maxLength": 500, "cooldownSeconds": 3, "pollIntervalSeconds": 3 },
+  "image": {
+    "maxCount": 4,
+    "maxSizeMb": 5,
+    "allowedMimeTypes": ["image/jpeg", "image/png", "image/webp"]
+  }
+}
+```
+
+秘密情報を含まないためログイン前でも取得できる。アプリ起動時に1度取得して保持し、入力欄の `maxLength`、ファイル選択の `accept`、チャットのポーリング間隔などに使う。
+
 ### 認証・プロフィール
 
 サインアップとログインはフロントがSupabaseに対して直接行うため、Express側にエンドポイントは無い。
@@ -538,6 +560,21 @@ model EventRequest {
 | DELETE | `/api/posts/:postId/reactions` | 必要 | いいねを外す。更新後の `{ reactionCount, reactedByMe }` を返す |
 
 削除ボタンの出し分けには `isMine` を使う。リアクションの両エンドポイントは更新後の状態を返すため、フロントは楽観更新に頼らず実数を反映できる。
+
+**いいね順のページ送りについて**
+
+`sort=reactions` は順位の基準（いいね数）そのものが刻々と変わるため、ページごとに並べ直すと順位が上がった投稿がカーソルを追い越し、一度も表示されないまま飛ばされてしまう。これを避けるため、**最初のページを取得した時刻をカーソルに持たせ、ページ送りの間はその時点のいいね数で順位を固定する**。画面に表示する `reactionCount` は現在値を返すので、順位は固定でも数字は最新になる。
+
+いいねの取り消しは行そのものを削除するため、固定したはずの集計値も下がる。このときに限り**同じ投稿が二度返ることがある**（飛ばされることはない）。表示側は投稿idで重複を除くこと。
+
+```js
+// 例: ページを追加読み込みするとき
+setPosts((prev) => {
+  const byId = new Map(prev.map((p) => [p.id, p]))
+  for (const p of body.posts) byId.set(p.id, p)
+  return [...byId.values()]
+})
+```
 | POST | `/api/uploads/images` | 必要 | 画像をSupabase Storageへ保存し、URLを返す |
 
 `type=official` の一覧は `sort` を受け付けず、常に新着順で返す。

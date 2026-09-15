@@ -12,6 +12,7 @@ import { eventPostsRouter, postsRouter } from "./routes/posts.js";
 import { eventMessagesRouter, messagesRouter } from "./routes/messages.js";
 import { uploadsRouter } from "./routes/uploads.js";
 import { eventRequestsRouter } from "./routes/eventRequests.js";
+import { configRouter } from "./routes/config.js";
 import { adminRouter } from "./routes/admin/index.js";
 
 const app = express();
@@ -20,6 +21,9 @@ app.use(cors({ origin: env.frontendOrigin }));
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+
+// 制限値をフロントと共有するための設定配信。秘密情報を含まないため認証不要。
+app.use("/api/config", configRouter);
 
 // サインアップ/ログインはフロントがSupabaseに直接行う。ここは検証とプロフィール管理のみ。
 app.use("/api/auth", authRouter);

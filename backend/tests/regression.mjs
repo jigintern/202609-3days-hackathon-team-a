@@ -223,6 +223,102 @@ async function main() {
       { count: negative.json?.posts?.length, nextCursor: negative.json?.nextCursor }
     );
 
+    console.log("\n--- いいね順のページ送り（順位が動いても飛ばさない） ---");
+    // 専用のイベントを作り、A=5,B=4,C=3,D=2,E=1 のいいねを付ける
+    const rankEvent = await prisma.event.create({
+      data: {
+        artistId: artist.id,
+        title: "回帰テスト用イベント",
+        venue: "V",
+        startsAt: new Date(Date.now() + 86400000),
+      },
+    });
+    const likers = [];
+    for (let i = 0; i < 12; i++) {
+      const liker = await createSupabaseUser();
+      createdUserIds.push(liker.userId);
+      await prisma.user.create({
+        data: { id: liker.userId, email: `liker-${i}-${Date.now()}@example.invalid`, displayName: `L${i}` },
+      });
+      likers.push(liker);
+    }
+
+    const labels = ["A", "B", "C", "D", "E"];
+    const rankPosts = [];
+    for (let i = 0; i < labels.length; i++) {
+      const p = await prisma.post.create({
+        data: {
+          eventId: rankEvent.id,
+          userId: user.userId,
+          type: "fan",
+          body: `順位${labels[i]}`,
+          createdAt: new Date(Date.now() - i * 1000),
+        },
+      });
+      rankPosts.push(p);
+      createdPostIds.push(p.id);
+      await prisma.reaction.createMany({
+        data: likers.slice(0, 5 - i).map((l) => ({ postId: p.id, userId: l.userId })),
+      });
+    }
+
+    async function walkAllPages(eventId) {
+      const seen = [];
+      let cursor = null;
+      let guard = 0;
+      do {
+        const query = `type=fan&limit=2${cursor ? `&cursor=${cursor}` : ""}`;
+        const page = await req(`/events/${eventId}/posts?${query}`, { token: user.token });
+        seen.push(...page.json.posts.map((p) => p.body));
+        cursor = page.json.nextCursor;
+        // 1ページ目を取り終えた直後に順位を動かす
+        if (guard === 0) await onFirstPage();
+      } while (cursor && ++guard < 10);
+      return seen;
+    }
+
+    // ケース1: 下位の投稿にいいねが集中し、カーソルより上位へ移動する
+    let onFirstPage = async () => {
+      await prisma.reaction.createMany({
+        data: likers.slice(1, 11).map((l) => ({ postId: rankPosts[4].id, userId: l.userId })),
+      });
+    };
+    const seenWhenPromoted = await walkAllPages(rankEvent.id);
+    check(
+      "ページ送り中に順位が上がった投稿も必ず表示される",
+      labels.every((l) => seenWhenPromoted.includes(`順位${l}`)),
+      { 表示された: seenWhenPromoted }
+    );
+    check(
+      "同じ投稿が重複しない（順位上昇時）",
+      new Set(seenWhenPromoted).size === seenWhenPromoted.length,
+      seenWhenPromoted
+    );
+
+    // ケース2: 上位の投稿からいいねが取り消され、順位が下がる
+    await prisma.reaction.deleteMany({ where: { postId: rankPosts[4].id } });
+    await prisma.reaction.createMany({
+      data: likers.slice(0, 1).map((l) => ({ postId: rankPosts[4].id, userId: l.userId })),
+    });
+    onFirstPage = async () => {
+      await prisma.reaction.deleteMany({ where: { postId: rankPosts[0].id } });
+    };
+    const seenWhenDemoted = await walkAllPages(rankEvent.id);
+    check(
+      "ページ送り中に順位が下がっても欠落しない",
+      labels.every((l) => seenWhenDemoted.includes(`順位${l}`)),
+      { 表示された: seenWhenDemoted }
+    );
+    // いいねの取り消しは行そのものを消すため、スナップショット時点の集計値も下がる。
+    // この場合に限り同じ投稿が二度返ることがある（欠落はしない）。
+    // 表示側は投稿idで重複を除くこと。詳細は SPEC_1.md 7章。
+    const demotedDuplicates = seenWhenDemoted.length - new Set(seenWhenDemoted).size;
+    console.log(
+      `     ※ 既知の制限: いいね取り消し時の重複 ${demotedDuplicates} 件（欠落は無し。表示側でid重複除去が必要）`
+    );
+
+    await prisma.event.deleteMany({ where: { id: rankEvent.id } });
+
     console.log("\n--- いいねの取り消し ---");
     const ghost = await req("/posts/00000000-0000-0000-0000-000000000000/reactions", {
       method: "DELETE",
@@ -256,6 +352,29 @@ async function main() {
     if (badArtistUrl.json?.artist?.id) {
       await prisma.artist.deleteMany({ where: { id: badArtistUrl.json.artist.id } });
     }
+
+    console.log("\n--- 設定値の配信 ---");
+    const config = await req("/config");
+    check("GET /api/config は認証なしで200", config.status === 200, config);
+    check(
+      "設定値がすべて数値で返る（NaN由来のnullが混ざらない）",
+      [
+        config.json?.post?.maxLength,
+        config.json?.post?.cooldownSeconds,
+        config.json?.chat?.maxLength,
+        config.json?.chat?.cooldownSeconds,
+        config.json?.chat?.pollIntervalSeconds,
+        config.json?.image?.maxCount,
+        config.json?.image?.maxSizeMb,
+      ].every((v) => typeof v === "number" && Number.isFinite(v)),
+      config.json
+    );
+    check(
+      "許可する画像形式が返る",
+      Array.isArray(config.json?.image?.allowedMimeTypes) &&
+        config.json.image.allowedMimeTypes.includes("image/png"),
+      config.json?.image
+    );
 
     console.log(`\n完了: ${failures === 0 ? "全項目パス" : `${failures}件失敗`}`);
   } finally {
