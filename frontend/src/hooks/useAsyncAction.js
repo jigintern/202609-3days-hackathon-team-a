@@ -7,6 +7,11 @@ export function useAsyncAction(action) {
   const activeRef = useRef(true)
 
   useEffect(() => {
+    // StrictModeは開発時にeffectを「実行→クリーンアップ→再実行」する。
+    // ここで true に戻さないと、クリーンアップで false になったまま復帰せず、
+    // finally の setPending(false) が動かずボタンが押せないままになる。
+    activeRef.current = true
+
     return () => {
       activeRef.current = false
     }

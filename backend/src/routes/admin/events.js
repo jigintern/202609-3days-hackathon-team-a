@@ -22,6 +22,32 @@ const officialPostSchema = z.object({
   imageUrls: z.array(z.string().url()).max(env.imageMaxCount).optional(),
 });
 
+adminEventsRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const events = await prisma.event.findMany({
+      orderBy: { startsAt: "desc" },
+      include: {
+        artist: { select: { id: true, name: true } },
+        _count: { select: { posts: true, messages: true } },
+      },
+    });
+
+    res.json({
+      events: events.map((event) => ({
+        id: event.id,
+        title: event.title,
+        venue: event.venue,
+        prefecture: event.prefecture,
+        startsAt: event.startsAt,
+        artist: event.artist,
+        postCount: event._count.posts,
+        messageCount: event._count.messages,
+      })),
+    });
+  })
+);
+
 adminEventsRouter.post(
   "/",
   asyncHandler(async (req, res) => {

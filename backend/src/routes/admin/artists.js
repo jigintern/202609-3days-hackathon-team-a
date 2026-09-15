@@ -15,6 +15,29 @@ const artistSchema = z.object({
 
 const updateArtistSchema = artistSchema.partial();
 
+adminArtistsRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const artists = await prisma.artist.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { events: true, follows: true } } },
+    });
+
+    res.json({
+      artists: artists.map((artist) => ({
+        id: artist.id,
+        name: artist.name,
+        nameKana: artist.nameKana,
+        description: artist.description,
+        imageUrl: artist.imageUrl,
+        eventCount: artist._count.events,
+        followerCount: artist._count.follows,
+        createdAt: artist.createdAt,
+      })),
+    });
+  })
+);
+
 adminArtistsRouter.post(
   "/",
   asyncHandler(async (req, res) => {
