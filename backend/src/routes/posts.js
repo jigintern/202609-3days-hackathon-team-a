@@ -25,11 +25,22 @@ function serializePost(post, viewerId) {
       .slice()
       .sort((a, b) => a.position - b.position)
       .map((image) => image.url),
+    authorId: post.userId,
     authorDisplayName: post.user.displayName,
+    isMine: post.userId === viewerId,
     reactionCount: post.reactions.length,
     reactedByMe: post.reactions.some((r) => r.userId === viewerId),
     createdAt: post.createdAt,
   };
+}
+
+async function readReactionState(postId, userId) {
+  const [reactionCount, mine] = await Promise.all([
+    prisma.reaction.count({ where: { postId } }),
+    prisma.reaction.findUnique({ where: { postId_userId: { postId, userId } } }),
+  ]);
+
+  return { reactionCount, reactedByMe: Boolean(mine) };
 }
 
 eventPostsRouter.get(
@@ -128,7 +139,7 @@ postsRouter.post(
       create: { postId: post.id, userId: req.user.id },
     });
 
-    res.status(204).end();
+    res.json(await readReactionState(post.id, req.user.id));
   })
 );
 
@@ -139,6 +150,6 @@ postsRouter.delete(
       where: { postId: req.params.postId, userId: req.user.id },
     });
 
-    res.status(204).end();
+    res.json(await readReactionState(req.params.postId, req.user.id));
   })
 );
