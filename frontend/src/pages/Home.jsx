@@ -3,16 +3,7 @@ import { Link } from 'react-router-dom'
 import { getHome } from '../api/home.js'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
-
-function formatDateTime(isoString) {
-  return new Date(isoString).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDateTime } from '../lib/formatDate.js'
 
 function Home() {
   const { profile, signOut } = useAuth()
@@ -45,6 +36,10 @@ function Home() {
         <button type="button" onClick={signOut}>
           ログアウト
         </button>
+        <nav>
+          <Link to="/artists">アーティスト一覧</Link>
+          <Link to="/event-requests/new">イベント追加申請</Link>
+        </nav>
       </header>
 
       <h2>フォロー中のイベント</h2>

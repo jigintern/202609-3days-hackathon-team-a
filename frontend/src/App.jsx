@@ -6,6 +6,7 @@ import ProfileSetup from './pages/ProfileSetup.jsx'
 import Artists from './pages/Artists.jsx'
 import ArtistDetail from './pages/ArtistDetail.jsx'
 import EventDetail from './pages/EventDetail.jsx'
+import EventRequestNew from './pages/EventRequestNew.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminRoute from './components/AdminRoute.jsx'
 import AdminUsers from './pages/admin/AdminUsers.jsx'
@@ -49,6 +50,14 @@ function App() {
         element={
           <ProtectedRoute>
             <EventDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/event-requests/new"
+        element={
+          <ProtectedRoute>
+            <EventRequestNew />
           </ProtectedRoute>
         }
       />
