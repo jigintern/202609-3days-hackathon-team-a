@@ -5,6 +5,7 @@ import { listPosts, createPost, deletePost, addReaction, removeReaction } from '
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
 import { uploadImages } from '../api/uploads.js'
 import { ApiError } from '../lib/api.js'
+import { formatDateTime } from '../lib/formatDate.js'
 
 const POST_MAX_LENGTH = 280
 const IMAGE_MAX_COUNT = 4
@@ -20,16 +21,6 @@ const TABS = [
   { key: 'user', label: 'ユーザー' },
   { key: 'chat', label: 'チャット' },
 ]
-
-function formatDateTime(isoString) {
-  return new Date(isoString).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function OfficialPostsTab({ eventId }) {
   const [posts, setPosts] = useState([])

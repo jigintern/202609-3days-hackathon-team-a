@@ -3,16 +3,7 @@ import { Link } from 'react-router-dom'
 import { getHome } from '../api/home.js'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
-
-function formatDateTime(isoString) {
-  return new Date(isoString).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+import { formatDateTime } from '../lib/formatDate.js'
 
 function Home() {
   const { profile, signOut } = useAuth()
