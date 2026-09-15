@@ -6,3 +6,10 @@ export function listPosts(eventId, { type = 'fan', sort, cursor } = {}) {
   if (cursor) params.set('cursor', cursor)
   return apiFetch(`/api/events/${eventId}/posts?${params.toString()}`)
 }
+
+export function createPost(eventId, { body, imageUrls } = {}) {
+  return apiFetch(`/api/events/${eventId}/posts`, {
+    method: 'POST',
+    body: JSON.stringify({ body, imageUrls }),
+  })
+}
