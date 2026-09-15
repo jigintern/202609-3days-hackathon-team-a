@@ -3,10 +3,14 @@ import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
 import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
+import { uploadImages } from '../api/uploads.js'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 
 const POST_MAX_LENGTH = 280
+const IMAGE_MAX_COUNT = 4
+const IMAGE_MAX_SIZE_MB = 5
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHAT_MAX_LENGTH = 500
 const CHAT_POLL_INTERVAL_MS = 3000
 const CHAT_LIST_MAX_HEIGHT_PX = 320
@@ -85,11 +89,14 @@ function UserPostsTab({ eventId }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [draft, setDraft] = useState('')
+  const [files, setFiles] = useState([])
+  const [uploadedUrls, setUploadedUrls] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [reactionPending, setReactionPending] = useState(() => new Set())
   const [reactionError, setReactionError] = useState(null)
   const requestRef = useRef(0)
+  const fileInputRef = useRef(null)
 
   function fetchFirstPage() {
     const requestId = ++requestRef.current
@@ -118,6 +125,37 @@ function UserPostsTab({ eventId }) {
     }
   }, [eventId, sort])
 
+  function clearFiles() {
+    setFiles([])
+    setUploadedUrls(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files)
+    setSubmitError(null)
+    // 選択し直した場合は、前回アップロード済みのURLを使い回さない
+    setUploadedUrls(null)
+
+    if (selected.length > IMAGE_MAX_COUNT) {
+      setSubmitError(`画像は${IMAGE_MAX_COUNT}枚までです`)
+      clearFiles()
+      return
+    }
+    if (selected.some((file) => !ALLOWED_IMAGE_TYPES.includes(file.type))) {
+      setSubmitError('画像はjpeg / png / webpのみ添付できます')
+      clearFiles()
+      return
+    }
+    if (selected.some((file) => file.size > IMAGE_MAX_SIZE_MB * 1024 * 1024)) {
+      setSubmitError(`画像は1枚あたり${IMAGE_MAX_SIZE_MB}MBまでです`)
+      clearFiles()
+      return
+    }
+
+    setFiles(selected)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     const trimmed = draft.trim()
@@ -126,8 +164,15 @@ function UserPostsTab({ eventId }) {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      await createPost(eventId, { body: trimmed })
+      // クールダウン等で投稿だけ失敗した際に再アップロードしないよう、URLを保持して再利用する
+      let imageUrls = uploadedUrls
+      if (!imageUrls && files.length > 0) {
+        imageUrls = (await uploadImages(files)).urls
+        setUploadedUrls(imageUrls)
+      }
+      await createPost(eventId, { body: trimmed, imageUrls: imageUrls ?? undefined })
       setDraft('')
+      clearFiles()
       fetchFirstPage()
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : '投稿に失敗しました')
@@ -203,6 +248,23 @@ function UserPostsTab({ eventId }) {
         <div>
           {draft.length} / {POST_MAX_LENGTH}
         </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept={ALLOWED_IMAGE_TYPES.join(',')}
+          multiple
+          onChange={handleFileChange}
+          disabled={submitting}
+        />
+        {files.length > 0 && (
+          <ul>
+            {files.map((file, index) => (
+              <li key={index}>{file.name}</li>
+            ))}
+          </ul>
+        )}
+
         {submitError && <p role="alert">{submitError}</p>}
         <button type="submit" disabled={submitting || draft.trim().length === 0}>
           {submitting ? '投稿中...' : '投稿する'}
