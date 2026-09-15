@@ -31,18 +31,23 @@ authRouter.post(
       throw Errors.validation(parsed.error.issues[0]?.message ?? "入力が不正です");
     }
 
-    const existing = await prisma.user.findUnique({ where: { id: req.auth.id } });
-    if (existing) {
-      throw Errors.conflict("プロフィールは既に作成されています");
+    // 存在確認してから作成すると二重送信で競合する（React StrictModeの二重実行でも踏む）。
+    // 一意制約違反を409に読み替えることで、競合しても正しいステータスを返す。
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          id: req.auth.id,
+          email: req.auth.email,
+          displayName: parsed.data.displayName,
+        },
+      });
+    } catch (err) {
+      if (err.code === "P2002") {
+        throw Errors.conflict("プロフィールは既に作成されています");
+      }
+      throw err;
     }
-
-    const user = await prisma.user.create({
-      data: {
-        id: req.auth.id,
-        email: req.auth.email,
-        displayName: parsed.data.displayName,
-      },
-    });
 
     res.status(201).json({ user: serializeUser(user) });
   })

@@ -6,14 +6,28 @@ import { Errors } from "../../utils/errors.js";
 
 export const adminEventRequestsRouter = Router();
 
+const statusSchema = z.enum(["pending", "approved", "rejected"]);
+
 const updateStatusSchema = z.object({
-  status: z.enum(["pending", "approved", "rejected"]),
+  status: statusSchema,
+});
+
+const listQuerySchema = z.object({
+  status: statusSchema.optional(),
 });
 
 adminEventRequestsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const status = req.query.status;
+    // 未検証のクエリをそのままPrismaに渡すと、enumに無い値で500になる
+    const parsedQuery = listQuerySchema.safeParse({
+      status: req.query.status === "" ? undefined : req.query.status,
+    });
+    if (!parsedQuery.success) {
+      throw Errors.validation("statusは pending / approved / rejected のいずれかです");
+    }
+
+    const { status } = parsedQuery.data;
     const where = status ? { status } : {};
 
     const requests = await prisma.eventRequest.findMany({
