@@ -2,13 +2,21 @@ import { useCallback } from 'react'
 import { getUsers, setUserSuspended } from '../../api/admin.js'
 import { useFetch } from '../../hooks/useFetch.js'
 import { useAsyncAction } from '../../hooks/useAsyncAction.js'
+import { useAuth } from '../../hooks/useAuth.jsx'
 
 function AdminUsers() {
+  const { profile } = useAuth()
   const fetchUsers = useCallback(() => getUsers().then((body) => body?.users ?? []), [])
   const { data: users, setData: setUsers, loading, error } = useFetch(fetchUsers, [])
 
   const { run: toggleSuspended, pending, error: actionError } = useAsyncAction(async (user) => {
-    const body = await setUserSuspended(user.id, !user.isSuspended)
+    const suspend = !user.isSuspended
+    const message = suspend
+      ? `${user.displayName} を利用停止にします。よろしいですか？`
+      : `${user.displayName} の利用停止を解除します。よろしいですか？`
+    if (!window.confirm(message)) return
+
+    const body = await setUserSuspended(user.id, suspend)
     setUsers((prev) => prev.map((u) => (u.id === user.id ? body.user : u)))
   })
 
@@ -37,9 +45,14 @@ function AdminUsers() {
               <td>{user.role === 'admin' ? '運営' : '一般'}</td>
               <td>{user.isSuspended ? '利用停止中' : '利用中'}</td>
               <td>
-                <button type="button" onClick={() => toggleSuspended(user)} disabled={pending}>
-                  {user.isSuspended ? '停止を解除' : '利用停止にする'}
-                </button>
+                {/* 自分を停止すると管理画面から締め出されるため、操作させない */}
+                {user.id === profile?.id ? (
+                  <span>自分</span>
+                ) : (
+                  <button type="button" onClick={() => toggleSuspended(user)} disabled={pending}>
+                    {user.isSuspended ? '停止を解除' : '利用停止にする'}
+                  </button>
+                )}
               </td>
             </tr>
           ))}

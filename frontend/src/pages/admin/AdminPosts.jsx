@@ -26,12 +26,16 @@ function AdminPosts() {
   const { data, setData, loading, error } = useFetch(fetchData, [])
 
   const { run: removePost, pending: postPending, error: postError } = useAsyncAction(async (post) => {
+    if (!window.confirm(`この投稿を削除します。よろしいですか？\n\n${post.body}`)) return
+
     await deleteAdminPost(post.id)
     setData((prev) => ({ ...prev, posts: prev.posts.filter((p) => p.id !== post.id) }))
   })
 
   const { run: removeMessage, pending: messagePending, error: messageError } = useAsyncAction(
     async (message) => {
+      if (!window.confirm(`この発言を削除します。よろしいですか？\n\n${message.body}`)) return
+
       await deleteAdminMessage(message.id)
       setData((prev) => ({ ...prev, messages: prev.messages.filter((m) => m.id !== message.id) }))
     },

@@ -5,12 +5,13 @@ import { useAsyncAction } from '../../hooks/useAsyncAction.js'
 
 const EMPTY = { name: '', nameKana: '', description: '', imageUrl: '' }
 
-// 空文字は送らない（APIは任意項目にURL形式などの検証を掛けているため）
-function toPayload(form) {
+// 登録時は空欄を送らない。編集時は空欄も送らないと「値を消す」ができないため、
+// 空文字のまま送ってサーバー側でnullに寄せてもらう。
+function toPayload(form, { isEdit }) {
   const payload = {}
   for (const [key, value] of Object.entries(form)) {
     const trimmed = value.trim()
-    if (trimmed) payload[key] = trimmed
+    if (trimmed || isEdit) payload[key] = trimmed
   }
   return payload
 }
@@ -38,7 +39,7 @@ function AdminArtists() {
   }
 
   const { run: submit, pending, error: actionError } = useAsyncAction(async () => {
-    const payload = toPayload(form)
+    const payload = toPayload(form, { isEdit: Boolean(editingId) })
 
     if (editingId) {
       const body = await updateArtist(editingId, payload)

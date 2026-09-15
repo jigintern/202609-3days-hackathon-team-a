@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
+import { normalizeOptional } from "../../utils/normalizeOptional.js";
 import { env } from "../../lib/env.js";
 
 export const adminEventsRouter = Router();
@@ -27,6 +28,7 @@ adminEventsRouter.get(
   asyncHandler(async (req, res) => {
     const events = await prisma.event.findMany({
       orderBy: { startsAt: "desc" },
+      take: 100,
       include: {
         artist: { select: { id: true, name: true } },
         _count: { select: { posts: true, messages: true } },
@@ -59,7 +61,7 @@ adminEventsRouter.post(
     const artist = await prisma.artist.findUnique({ where: { id: parsed.data.artistId } });
     if (!artist) throw Errors.validation("指定されたアーティストが存在しません");
 
-    const event = await prisma.event.create({ data: parsed.data });
+    const event = await prisma.event.create({ data: normalizeOptional(parsed.data) });
     res.status(201).json({ event });
   })
 );
@@ -77,7 +79,7 @@ adminEventsRouter.patch(
 
     const event = await prisma.event.update({
       where: { id: req.params.eventId },
-      data: parsed.data,
+      data: normalizeOptional(parsed.data),
     });
 
     res.json({ event });

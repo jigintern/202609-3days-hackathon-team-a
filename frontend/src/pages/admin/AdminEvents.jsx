@@ -62,7 +62,8 @@ function AdminEvents() {
       venue: form.venue.trim(),
       startsAt: new Date(form.startsAt).toISOString(),
     }
-    if (form.prefecture.trim()) payload.prefecture = form.prefecture.trim()
+    // 編集時は空欄も送らないと都道府県を消せない
+    if (form.prefecture.trim() || editingId) payload.prefecture = form.prefecture.trim()
 
     if (editingId) {
       const body = await updateEvent(editingId, payload)
