@@ -45,6 +45,10 @@ function Home() {
         <button type="button" onClick={signOut}>
           ログアウト
         </button>
+        <nav>
+          <Link to="/artists">アーティスト一覧</Link>
+          <Link to="/event-requests/new">イベント追加申請</Link>
+        </nav>
       </header>
 
       <h2>フォロー中のイベント</h2>
