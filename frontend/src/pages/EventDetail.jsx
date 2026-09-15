@@ -2,9 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
 import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
+import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
+import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 
 const POST_MAX_LENGTH = 280
+const CHAT_MAX_LENGTH = 500
+const CHAT_POLL_INTERVAL_MS = 3000
 
 const TABS = [
   { key: 'official', label: '公式アカウント' },
@@ -255,6 +259,154 @@ function UserPostsTab({ eventId }) {
   )
 }
 
+function ChatTab({ eventId }) {
+  const { profile } = useAuth()
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [actionError, setActionError] = useState(null)
+  const lastMessageRef = useRef(null)
+
+  function mergeMessages(incoming) {
+    if (incoming.length === 0) return
+
+    setMessages((prev) => {
+      const seen = new Set(prev.map((message) => message.id))
+      const added = incoming.filter((message) => !seen.has(message.id))
+      if (added.length === 0) return prev
+      // 送信レスポンスとポーリング結果が前後して届いても時系列を保つ
+      return [...prev, ...added].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    })
+
+    // ポーリングの基準は常に最新の発言へ。古い発言で巻き戻さない
+    for (const message of incoming) {
+      const current = lastMessageRef.current
+      if (!current || new Date(message.createdAt) > new Date(current.createdAt)) {
+        lastMessageRef.current = { id: message.id, createdAt: message.createdAt }
+      }
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    let timerId
+
+    // 直前に取得した発言以降の差分のみを一定間隔で取りに行く
+    async function poll() {
+      try {
+        const body = await listMessages(eventId, { after: lastMessageRef.current?.id })
+        if (cancelled) return
+        mergeMessages(body.messages)
+        setError(null)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'チャットの取得に失敗しました')
+      } finally {
+        if (!cancelled) timerId = setTimeout(poll, CHAT_POLL_INTERVAL_MS)
+      }
+    }
+
+    setLoading(true)
+    setMessages([])
+    lastMessageRef.current = null
+    listMessages(eventId)
+      .then((body) => {
+        if (cancelled) return
+        setMessages(body.messages)
+        const newest = body.messages.at(-1)
+        lastMessageRef.current = newest ? { id: newest.id, createdAt: newest.createdAt } : null
+        setError(null)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'チャットの取得に失敗しました')
+      })
+      .finally(() => {
+        if (cancelled) return
+        setLoading(false)
+        timerId = setTimeout(poll, CHAT_POLL_INTERVAL_MS)
+      })
+
+    return () => {
+      cancelled = true
+      clearTimeout(timerId)
+    }
+  }, [eventId])
+
+  async function handleSend(e) {
+    e.preventDefault()
+    const trimmed = draft.trim()
+    if (!trimmed) return
+
+    setSending(true)
+    setActionError(null)
+    try {
+      const body = await createMessage(eventId, { body: trimmed })
+      setDraft('')
+      mergeMessages([body.message])
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : '送信に失敗しました')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleDelete(messageId) {
+    setActionError(null)
+    try {
+      await deleteMessage(messageId)
+      setMessages((prev) => prev.filter((message) => message.id !== messageId))
+    } catch (err) {
+      // ポーリングが3秒ごとにerrorを消すため、操作エラーは別の状態で保持する
+      setActionError(err instanceof ApiError ? err.message : '削除に失敗しました')
+    }
+  }
+
+  return (
+    <div>
+      {loading && <p>読み込み中...</p>}
+      {error && <p role="alert">{error}</p>}
+      {!loading && !error && messages.length === 0 && <p>まだ発言はありません。</p>}
+
+      {messages.length > 0 && (
+        <ul>
+          {messages.map((message) => (
+            <li key={message.id}>
+              <p>
+                {message.authorDisplayName}
+                <small> {formatDateTime(message.createdAt)}</small>
+              </p>
+              <p>{message.body}</p>
+              {message.authorId === profile?.id && (
+                <button type="button" onClick={() => handleDelete(message.id)}>
+                  削除
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={handleSend}>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={CHAT_MAX_LENGTH}
+          placeholder="メッセージを入力"
+          disabled={sending}
+        />
+        {actionError && <p role="alert">{actionError}</p>}
+        <button type="submit" disabled={sending || draft.trim().length === 0}>
+          {sending ? '送信中...' : '送信'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 function EventDetail() {
   const { eventId } = useParams()
   const [event, setEvent] = useState(null)
@@ -304,7 +456,7 @@ function EventDetail() {
 
       {activeTab === 'official' && <OfficialPostsTab eventId={eventId} />}
       {activeTab === 'user' && <UserPostsTab eventId={eventId} />}
-      {activeTab === 'chat' && <p>準備中</p>}
+      {activeTab === 'chat' && <ChatTab eventId={eventId} />}
     </main>
   )
 }
