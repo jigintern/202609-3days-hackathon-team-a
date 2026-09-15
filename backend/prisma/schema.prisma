@@ -38,6 +38,38 @@ model User {
   reactions     Reaction[]
   messages      ChatMessage[]
   eventRequests EventRequest[]
+  vaultProfile  VaultProfile?
+  vaultEntries  VaultEntry[]
+}
+
+/// パスワード管理（SPEC_1.md 4.7 案B）の鍵導出パラメータ。
+/// マスターパスワードそのものも復号鍵もサーバーには保存しない。
+/// verifier は固定文字列を暗号化したもので、マスターパスワードの正否判定にフロントが使う。
+model VaultProfile {
+  userId         String   @id
+  kdfSalt        String
+  kdfIterations  Int
+  verifierIv     String
+  verifierCipher String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// 認証情報の保管庫。サイト名・会員番号・パスワードはすべて cipherText の中にあり、
+/// サーバーからは中身を読めない。
+model VaultEntry {
+  id         String   @id @default(uuid())
+  userId     String
+  iv         String
+  cipherText String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Artist {

@@ -1,10 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
-import { listPosts, createPost } from '../api/posts.js'
+import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
+import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
+import { uploadImages } from '../api/uploads.js'
+import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 
 const POST_MAX_LENGTH = 280
+const IMAGE_MAX_COUNT = 4
+const IMAGE_MAX_SIZE_MB = 5
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const CHAT_MAX_LENGTH = 500
+const CHAT_POLL_INTERVAL_MS = 3000
+const CHAT_LIST_MAX_HEIGHT_PX = 320
+const SCROLL_BOTTOM_THRESHOLD_PX = 40
 
 const TABS = [
   { key: 'official', label: '公式アカウント' },
@@ -79,9 +89,14 @@ function UserPostsTab({ eventId }) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [draft, setDraft] = useState('')
+  const [files, setFiles] = useState([])
+  const [uploadedUrls, setUploadedUrls] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [reactionPending, setReactionPending] = useState(() => new Set())
+  const [reactionError, setReactionError] = useState(null)
   const requestRef = useRef(0)
+  const fileInputRef = useRef(null)
 
   function fetchFirstPage() {
     const requestId = ++requestRef.current
@@ -110,6 +125,37 @@ function UserPostsTab({ eventId }) {
     }
   }, [eventId, sort])
 
+  function clearFiles() {
+    setFiles([])
+    setUploadedUrls(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function handleFileChange(e) {
+    const selected = Array.from(e.target.files)
+    setSubmitError(null)
+    // 選択し直した場合は、前回アップロード済みのURLを使い回さない
+    setUploadedUrls(null)
+
+    if (selected.length > IMAGE_MAX_COUNT) {
+      setSubmitError(`画像は${IMAGE_MAX_COUNT}枚までです`)
+      clearFiles()
+      return
+    }
+    if (selected.some((file) => !ALLOWED_IMAGE_TYPES.includes(file.type))) {
+      setSubmitError('画像はjpeg / png / webpのみ添付できます')
+      clearFiles()
+      return
+    }
+    if (selected.some((file) => file.size > IMAGE_MAX_SIZE_MB * 1024 * 1024)) {
+      setSubmitError(`画像は1枚あたり${IMAGE_MAX_SIZE_MB}MBまでです`)
+      clearFiles()
+      return
+    }
+
+    setFiles(selected)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     const trimmed = draft.trim()
@@ -118,13 +164,54 @@ function UserPostsTab({ eventId }) {
     setSubmitting(true)
     setSubmitError(null)
     try {
-      await createPost(eventId, { body: trimmed })
+      // クールダウン等で投稿だけ失敗した際に再アップロードしないよう、URLを保持して再利用する
+      let imageUrls = uploadedUrls
+      if (!imageUrls && files.length > 0) {
+        imageUrls = (await uploadImages(files)).urls
+        setUploadedUrls(imageUrls)
+      }
+      await createPost(eventId, { body: trimmed, imageUrls: imageUrls ?? undefined })
       setDraft('')
+      clearFiles()
       fetchFirstPage()
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : '投稿に失敗しました')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  function applyReaction(postId, reacted) {
+    setPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId
+          ? { ...post, reactedByMe: reacted, reactionCount: post.reactionCount + (reacted ? 1 : -1) }
+          : post,
+      ),
+    )
+  }
+
+  async function toggleReaction(post) {
+    if (reactionPending.has(post.id)) return
+    const reacted = !post.reactedByMe
+    const requestId = requestRef.current
+
+    setReactionPending((prev) => new Set(prev).add(post.id))
+    setReactionError(null)
+    applyReaction(post.id, reacted)
+
+    try {
+      await (reacted ? addReaction(post.id) : removeReaction(post.id))
+    } catch (err) {
+      // 一覧が再取得されていた場合、楽観更新の取り消しは新しいデータを壊すので行わない
+      if (requestRef.current === requestId) applyReaction(post.id, !reacted)
+      setReactionError(err instanceof ApiError ? err.message : 'いいねの更新に失敗しました')
+    } finally {
+      setReactionPending((prev) => {
+        const next = new Set(prev)
+        next.delete(post.id)
+        return next
+      })
     }
   }
 
@@ -134,7 +221,11 @@ function UserPostsTab({ eventId }) {
     try {
       const body = await listPosts(eventId, { type: 'fan', sort, cursor: nextCursor })
       if (requestRef.current !== requestId) return
-      setPosts((prev) => [...prev, ...body.posts])
+      // カーソルが配列オフセットのため、並び順が変わると同じ投稿が再度返ることがある
+      setPosts((prev) => {
+        const seen = new Set(prev.map((post) => post.id))
+        return [...prev, ...body.posts.filter((post) => !seen.has(post.id))]
+      })
       setNextCursor(body.nextCursor)
     } catch (err) {
       if (requestRef.current !== requestId) return
@@ -157,6 +248,23 @@ function UserPostsTab({ eventId }) {
         <div>
           {draft.length} / {POST_MAX_LENGTH}
         </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept={ALLOWED_IMAGE_TYPES.join(',')}
+          multiple
+          onChange={handleFileChange}
+          disabled={submitting}
+        />
+        {files.length > 0 && (
+          <ul>
+            {files.map((file, index) => (
+              <li key={index}>{file.name}</li>
+            ))}
+          </ul>
+        )}
+
         {submitError && <p role="alert">{submitError}</p>}
         <button type="submit" disabled={submitting || draft.trim().length === 0}>
           {submitting ? '投稿中...' : '投稿する'}
@@ -174,6 +282,7 @@ function UserPostsTab({ eventId }) {
 
       {loading && <p>読み込み中...</p>}
       {error && <p role="alert">{error}</p>}
+      {reactionError && <p role="alert">{reactionError}</p>}
       {!loading && !error && posts.length === 0 && <p>投稿はまだありません。</p>}
 
       {posts.length > 0 && (
@@ -189,9 +298,17 @@ function UserPostsTab({ eventId }) {
                   ))}
                 </div>
               )}
-              <small>
-                いいね {post.reactionCount} ・ {formatDateTime(post.createdAt)}
-              </small>
+              <div>
+                <button
+                  type="button"
+                  aria-pressed={post.reactedByMe}
+                  disabled={reactionPending.has(post.id)}
+                  onClick={() => toggleReaction(post)}
+                >
+                  {post.reactedByMe ? '♥' : '♡'} {post.reactionCount}
+                </button>
+                <small>{formatDateTime(post.createdAt)}</small>
+              </div>
             </li>
           ))}
         </ul>
@@ -202,6 +319,182 @@ function UserPostsTab({ eventId }) {
           {loadingMore ? '読み込み中...' : 'もっと見る'}
         </button>
       )}
+    </div>
+  )
+}
+
+function ChatTab({ eventId }) {
+  const { profile } = useAuth()
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [actionError, setActionError] = useState(null)
+  const lastMessageRef = useRef(null)
+  const listRef = useRef(null)
+  const atBottomRef = useRef(true)
+
+  // 過去ログを読んでいる最中に新着で勝手にスクロールしないよう、最下部付近にいるかを覚えておく
+  function handleListScroll() {
+    const list = listRef.current
+    if (!list) return
+    atBottomRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < SCROLL_BOTTOM_THRESHOLD_PX
+  }
+
+  function scrollToBottom() {
+    const list = listRef.current
+    if (list) list.scrollTop = list.scrollHeight
+  }
+
+  // 描画前にスクロールしないと、一瞬先頭が見えてから飛ぶ動きになる
+  useLayoutEffect(() => {
+    if (atBottomRef.current) scrollToBottom()
+  }, [messages])
+
+  function mergeMessages(incoming) {
+    if (incoming.length === 0) return
+
+    setMessages((prev) => {
+      const seen = new Set(prev.map((message) => message.id))
+      const added = incoming.filter((message) => !seen.has(message.id))
+      if (added.length === 0) return prev
+      // 送信レスポンスとポーリング結果が前後して届いても時系列を保つ
+      return [...prev, ...added].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+    })
+
+    // ポーリングの基準は常に最新の発言へ。古い発言で巻き戻さない
+    for (const message of incoming) {
+      const current = lastMessageRef.current
+      if (!current || new Date(message.createdAt) > new Date(current.createdAt)) {
+        lastMessageRef.current = { id: message.id, createdAt: message.createdAt }
+      }
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    let timerId
+
+    // 直前に取得した発言以降の差分のみを一定間隔で取りに行く
+    async function poll() {
+      try {
+        const body = await listMessages(eventId, { after: lastMessageRef.current?.id })
+        if (cancelled) return
+        mergeMessages(body.messages)
+        setError(null)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'チャットの取得に失敗しました')
+      } finally {
+        if (!cancelled) timerId = setTimeout(poll, CHAT_POLL_INTERVAL_MS)
+      }
+    }
+
+    setLoading(true)
+    setMessages([])
+    lastMessageRef.current = null
+    atBottomRef.current = true
+    listMessages(eventId)
+      .then((body) => {
+        if (cancelled) return
+        setMessages(body.messages)
+        const newest = body.messages.at(-1)
+        lastMessageRef.current = newest ? { id: newest.id, createdAt: newest.createdAt } : null
+        setError(null)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof ApiError ? err.message : 'チャットの取得に失敗しました')
+      })
+      .finally(() => {
+        if (cancelled) return
+        setLoading(false)
+        timerId = setTimeout(poll, CHAT_POLL_INTERVAL_MS)
+      })
+
+    return () => {
+      cancelled = true
+      clearTimeout(timerId)
+    }
+  }, [eventId])
+
+  async function handleSend(e) {
+    e.preventDefault()
+    const trimmed = draft.trim()
+    if (!trimmed) return
+
+    setSending(true)
+    setActionError(null)
+    try {
+      const body = await createMessage(eventId, { body: trimmed })
+      setDraft('')
+      // 自分の発言は、過去ログを見ていた場合でも必ず見えるようにする。
+      // ポーリングが先に取得済みで一覧が更新されない場合もあるため、この場でもスクロールする
+      atBottomRef.current = true
+      mergeMessages([body.message])
+      scrollToBottom()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : '送信に失敗しました')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleDelete(messageId) {
+    setActionError(null)
+    try {
+      await deleteMessage(messageId)
+      setMessages((prev) => prev.filter((message) => message.id !== messageId))
+    } catch (err) {
+      // ポーリングが3秒ごとにerrorを消すため、操作エラーは別の状態で保持する
+      setActionError(err instanceof ApiError ? err.message : '削除に失敗しました')
+    }
+  }
+
+  return (
+    <div>
+      {loading && <p>読み込み中...</p>}
+      {error && <p role="alert">{error}</p>}
+      {!loading && !error && messages.length === 0 && <p>まだ発言はありません。</p>}
+
+      {messages.length > 0 && (
+        <ul
+          ref={listRef}
+          onScroll={handleListScroll}
+          style={{ maxHeight: CHAT_LIST_MAX_HEIGHT_PX, overflowY: 'auto' }}
+        >
+          {messages.map((message) => (
+            <li key={message.id}>
+              <p>
+                {message.authorDisplayName}
+                <small> {formatDateTime(message.createdAt)}</small>
+              </p>
+              <p>{message.body}</p>
+              {message.authorId === profile?.id && (
+                <button type="button" onClick={() => handleDelete(message.id)}>
+                  削除
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={handleSend}>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={CHAT_MAX_LENGTH}
+          placeholder="メッセージを入力"
+          disabled={sending}
+        />
+        {actionError && <p role="alert">{actionError}</p>}
+        <button type="submit" disabled={sending || draft.trim().length === 0}>
+          {sending ? '送信中...' : '送信'}
+        </button>
+      </form>
     </div>
   )
 }
@@ -255,7 +548,7 @@ function EventDetail() {
 
       {activeTab === 'official' && <OfficialPostsTab eventId={eventId} />}
       {activeTab === 'user' && <UserPostsTab eventId={eventId} />}
-      {activeTab === 'chat' && <p>準備中</p>}
+      {activeTab === 'chat' && <ChatTab eventId={eventId} />}
     </main>
   )
 }

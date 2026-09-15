@@ -13,3 +13,11 @@ export function createPost(eventId, { body, imageUrls } = {}) {
     body: JSON.stringify({ body, imageUrls }),
   })
 }
+
+export function addReaction(postId) {
+  return apiFetch(`/api/posts/${postId}/reactions`, { method: 'POST' })
+}
+
+export function removeReaction(postId) {
+  return apiFetch(`/api/posts/${postId}/reactions`, { method: 'DELETE' })
+}
