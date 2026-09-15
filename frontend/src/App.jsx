@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Outlet } from 'react-router-dom'
 import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
@@ -7,6 +7,9 @@ import Artists from './pages/Artists.jsx'
 import ArtistDetail from './pages/ArtistDetail.jsx'
 import EventDetail from './pages/EventDetail.jsx'
 import EventRequestNew from './pages/EventRequestNew.jsx'
+import VaultUnlock from './pages/VaultUnlock.jsx'
+import Vault from './pages/Vault.jsx'
+import VaultEntryForm from './pages/VaultEntryForm.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AdminRoute from './components/AdminRoute.jsx'
 import AdminUsers from './pages/admin/AdminUsers.jsx'
@@ -14,6 +17,8 @@ import AdminArtists from './pages/admin/AdminArtists.jsx'
 import AdminEvents from './pages/admin/AdminEvents.jsx'
 import AdminPosts from './pages/admin/AdminPosts.jsx'
 import AdminEventRequests from './pages/admin/AdminEventRequests.jsx'
+import RequireVaultKey from './components/RequireVaultKey.jsx'
+import { VaultProvider } from './hooks/useVault.jsx'
 
 function App() {
   return (
@@ -101,6 +106,43 @@ function App() {
           </AdminRoute>
         }
       />
+
+      {/* 導出鍵をメモリ上で共有するため、保管庫の画面はまとめてVaultProviderで囲む */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <VaultProvider>
+              <Outlet />
+            </VaultProvider>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/vault/unlock" element={<VaultUnlock />} />
+        <Route
+          path="/vault"
+          element={
+            <RequireVaultKey>
+              <Vault />
+            </RequireVaultKey>
+          }
+        />
+        <Route
+          path="/vault/new"
+          element={
+            <RequireVaultKey>
+              <VaultEntryForm />
+            </RequireVaultKey>
+          }
+        />
+        <Route
+          path="/vault/:entryId/edit"
+          element={
+            <RequireVaultKey>
+              <VaultEntryForm />
+            </RequireVaultKey>
+          }
+        />
+      </Route>
     </Routes>
   )
 }

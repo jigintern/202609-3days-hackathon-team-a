@@ -15,6 +15,7 @@ function Header() {
           <Link to="/">ホーム</Link>
           <Link to="/artists">アーティスト</Link>
           <Link to="/event-requests/new">イベント追加申請</Link>
+          <Link to="/vault/unlock">パスワード管理</Link>
           <AdminEntryLink />
           <button type="button" className="btn-secondary" onClick={signOut}>
             ログアウト
