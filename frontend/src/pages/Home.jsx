@@ -39,6 +39,7 @@ function Home() {
         <nav>
           <Link to="/artists">アーティスト一覧</Link>
           <Link to="/event-requests/new">イベント追加申請</Link>
+          {profile?.role === 'admin' && <Link to="/admin/users">管理画面</Link>}
         </nav>
       </header>
 

@@ -5,6 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
 import { isUploadedImageUrl } from "../../lib/supabaseStorage.js";
 import { normalizeOptional } from "../../utils/normalizeOptional.js";
+import { decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
 import { env } from "../../lib/env.js";
 
 export const adminEventsRouter = Router();
@@ -34,16 +35,37 @@ const officialPostSchema = z.object({
 adminEventsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const events = await prisma.event.findMany({
-      orderBy: { startsAt: "desc" },
-      take: 100,
+    const limit = parseLimit(req.query.limit, { fallback: 50, max: 100 });
+    const cursor = decodeCursor(req.query.cursor);
+
+    // 単に件数で打ち切ると上限を超えた分に管理画面から到達できなくなるため、
+    // (startsAt, id) の複合キーで続きを取れるようにする
+    const rows = await prisma.event.findMany({
+      where: cursor
+        ? {
+            OR: [
+              { startsAt: { lt: new Date(cursor.startsAt) } },
+              { startsAt: new Date(cursor.startsAt), id: { lt: cursor.id } },
+            ],
+          }
+        : {},
+      orderBy: [{ startsAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
       include: {
         artist: { select: { id: true, name: true } },
         _count: { select: { posts: true, messages: true } },
       },
     });
 
+    const hasMore = rows.length > limit;
+    const events = hasMore ? rows.slice(0, limit) : rows;
+    const last = events[events.length - 1];
+
     res.json({
+      nextCursor:
+        hasMore && last
+          ? encodeCursor({ startsAt: last.startsAt.toISOString(), id: last.id })
+          : null,
       events: events.map((event) => ({
         id: event.id,
         title: event.title,

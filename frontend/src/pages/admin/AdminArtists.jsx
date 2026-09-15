@@ -17,8 +17,20 @@ function toPayload(form, { isEdit }) {
 }
 
 function AdminArtists() {
-  const fetchArtists = useCallback(() => getAdminArtists().then((body) => body?.artists ?? []), [])
-  const { data: artists, setData: setArtists, loading, error } = useFetch(fetchArtists, [])
+  const fetchArtists = useCallback(
+    () => getAdminArtists().then((body) => ({ artists: body?.artists ?? [], nextCursor: body?.nextCursor ?? null })),
+    [],
+  )
+  const { data, setData, loading, error } = useFetch(fetchArtists, [])
+  const artists = data?.artists ?? []
+
+  const { run: loadMore, pending: loadingMore, error: loadMoreError } = useAsyncAction(async () => {
+    const body = await getAdminArtists(data.nextCursor)
+    setData((prev) => ({
+      artists: [...prev.artists, ...(body.artists ?? [])],
+      nextCursor: body.nextCursor ?? null,
+    }))
+  })
 
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY)
@@ -43,10 +55,16 @@ function AdminArtists() {
 
     if (editingId) {
       const body = await updateArtist(editingId, payload)
-      setArtists((prev) => prev.map((a) => (a.id === editingId ? { ...a, ...body.artist } : a)))
+      setData((prev) => ({
+        ...prev,
+        artists: prev.artists.map((a) => (a.id === editingId ? { ...a, ...body.artist } : a)),
+      }))
     } else {
       const body = await createArtist(payload)
-      setArtists((prev) => [{ ...body.artist, eventCount: 0, followerCount: 0 }, ...prev])
+      setData((prev) => ({
+        ...prev,
+        artists: [{ ...body.artist, eventCount: 0, followerCount: 0 }, ...prev.artists],
+      }))
     }
 
     startCreate()
@@ -129,6 +147,12 @@ function AdminArtists() {
         </ul>
       )}
       {!loading && !error && artists.length === 0 && <p>まだ登録されていません。</p>}
+      {loadMoreError && <p role="alert">{loadMoreError}</p>}
+      {data?.nextCursor && (
+        <button type="button" onClick={loadMore} disabled={loadingMore}>
+          もっと見る
+        </button>
+      )}
     </>
   )
 }

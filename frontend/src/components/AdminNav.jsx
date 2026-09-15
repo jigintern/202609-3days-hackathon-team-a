@@ -8,6 +8,8 @@ const LINKS = [
   { to: '/admin/event-requests', label: 'イベント追加申請' },
 ]
 
+const HOME = { to: '/', label: 'アプリに戻る' }
+
 function AdminNav() {
   return (
     <nav aria-label="管理メニュー">
@@ -19,6 +21,9 @@ function AdminNav() {
             </NavLink>
           </li>
         ))}
+        <li>
+          <NavLink to={HOME.to}>{HOME.label}</NavLink>
+        </li>
       </ul>
     </nav>
   )

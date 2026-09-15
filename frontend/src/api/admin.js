@@ -27,8 +27,8 @@ export function deleteAdminMessage(messageId) {
   return apiFetch(`/api/admin/messages/${messageId}`, { method: 'DELETE' })
 }
 
-export function getAdminArtists() {
-  return apiFetch('/api/admin/artists')
+export function getAdminArtists(cursor) {
+  return apiFetch(`/api/admin/artists${cursor ? `?cursor=${cursor}` : ''}`)
 }
 
 export function createArtist(artist) {
@@ -42,8 +42,8 @@ export function updateArtist(artistId, artist) {
   })
 }
 
-export function getAdminEvents() {
-  return apiFetch('/api/admin/events')
+export function getAdminEvents(cursor) {
+  return apiFetch(`/api/admin/events${cursor ? `?cursor=${cursor}` : ''}`)
 }
 
 export function createEvent(event) {

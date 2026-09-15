@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
 import { normalizeOptional } from "../../utils/normalizeOptional.js";
+import { decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
 
 export const adminArtistsRouter = Router();
 
@@ -36,13 +37,34 @@ const updateArtistSchema = artistSchema.partial();
 adminArtistsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const artists = await prisma.artist.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 100,
+    const limit = parseLimit(req.query.limit, { fallback: 50, max: 100 });
+    const cursor = decodeCursor(req.query.cursor);
+
+    // 単に件数で打ち切ると上限を超えた分に管理画面から到達できなくなるため、
+    // (createdAt, id) の複合キーで続きを取れるようにする
+    const rows = await prisma.artist.findMany({
+      where: cursor
+        ? {
+            OR: [
+              { createdAt: { lt: new Date(cursor.createdAt) } },
+              { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+            ],
+          }
+        : {},
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
       include: { _count: { select: { events: true, follows: true } } },
     });
 
+    const hasMore = rows.length > limit;
+    const artists = hasMore ? rows.slice(0, limit) : rows;
+    const last = artists[artists.length - 1];
+
     res.json({
+      nextCursor:
+        hasMore && last
+          ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+          : null,
       artists: artists.map((artist) => ({
         id: artist.id,
         name: artist.name,

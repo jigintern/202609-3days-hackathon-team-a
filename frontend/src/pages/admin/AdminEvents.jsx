@@ -27,11 +27,21 @@ function AdminEvents() {
     () =>
       Promise.all([getAdminEvents(), getAdminArtists()]).then(([events, artists]) => ({
         events: events?.events ?? [],
+        nextCursor: events?.nextCursor ?? null,
         artists: artists?.artists ?? [],
       })),
     [],
   )
   const { data, setData, loading, error } = useFetch(fetchData, [])
+
+  const { run: loadMore, pending: loadingMore, error: loadMoreError } = useAsyncAction(async () => {
+    const body = await getAdminEvents(data.nextCursor)
+    setData((prev) => ({
+      ...prev,
+      events: [...prev.events, ...(body.events ?? [])],
+      nextCursor: body.nextCursor ?? null,
+    }))
+  })
 
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(EMPTY)
@@ -92,6 +102,13 @@ function AdminEvents() {
   const { run: submitOfficial, pending: officialPending, error: officialError } = useAsyncAction(
     async () => {
       await createOfficialPost(officialTarget.id, { body: officialBody.trim() })
+      // 一覧の投稿数を更新しないと「入稿したのに0件のまま」に見え、二重入稿を招く
+      setData((prev) => ({
+        ...prev,
+        events: prev.events.map((e) =>
+          e.id === officialTarget.id ? { ...e, postCount: e.postCount + 1 } : e,
+        ),
+      }))
       setOfficialDone(officialTarget.title)
       setOfficialBody('')
       setOfficialTarget(null)
@@ -237,6 +254,12 @@ function AdminEvents() {
         ))}
       </ul>
       {data.events.length === 0 && <p>まだ登録されていません。</p>}
+      {loadMoreError && <p role="alert">{loadMoreError}</p>}
+      {data.nextCursor && (
+        <button type="button" onClick={loadMore} disabled={loadingMore}>
+          もっと見る
+        </button>
+      )}
     </>
   )
 }
