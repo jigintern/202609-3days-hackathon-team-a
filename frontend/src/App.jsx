@@ -3,6 +3,7 @@ import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
 import ProfileSetup from './pages/ProfileSetup.jsx'
+import Artists from './pages/Artists.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 function App() {
@@ -16,6 +17,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/artists"
+        element={
+          <ProtectedRoute>
+            <Artists />
           </ProtectedRoute>
         }
       />
