@@ -4,7 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
 import { normalizeOptional } from "../../utils/normalizeOptional.js";
-import { decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
+import { cursorDateSchema, decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
 
 export const adminArtistsRouter = Router();
 
@@ -38,7 +38,7 @@ adminArtistsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const limit = parseLimit(req.query.limit, { fallback: 50, max: 100 });
-    const cursor = decodeCursor(req.query.cursor);
+    const cursor = decodeCursor(req.query.cursor, { createdAt: cursorDateSchema });
 
     // 単に件数で打ち切ると上限を超えた分に管理画面から到達できなくなるため、
     // (createdAt, id) の複合キーで続きを取れるようにする

@@ -44,6 +44,7 @@ function AdminEvents() {
   })
 
   const [editingId, setEditingId] = useState(null)
+  const [originalStartsAt, setOriginalStartsAt] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [officialTarget, setOfficialTarget] = useState(null)
   const [officialBody, setOfficialBody] = useState('')
@@ -51,11 +52,13 @@ function AdminEvents() {
 
   function startCreate() {
     setEditingId(null)
+    setOriginalStartsAt(null)
     setForm(EMPTY)
   }
 
   function startEdit(event) {
     setEditingId(event.id)
+    setOriginalStartsAt(new Date(event.startsAt))
     setForm({
       artistId: event.artist.id,
       title: event.title,
@@ -66,11 +69,16 @@ function AdminEvents() {
   }
 
   const { run: submit, pending, error: actionError } = useAsyncAction(async () => {
+    const startsAt = new Date(form.startsAt)
+    // 分単位の入力欄に表示されない、元イベントの秒・ミリ秒を保持する
+    if (originalStartsAt) {
+      startsAt.setSeconds(originalStartsAt.getSeconds(), originalStartsAt.getMilliseconds())
+    }
     const payload = {
       artistId: form.artistId,
       title: form.title.trim(),
       venue: form.venue.trim(),
-      startsAt: new Date(form.startsAt).toISOString(),
+      startsAt: startsAt.toISOString(),
     }
     // 編集時は空欄も送らないと都道府県を消せない
     if (form.prefecture.trim() || editingId) payload.prefecture = form.prefecture.trim()

@@ -1,3 +1,10 @@
+import { z } from "zod";
+import { Errors } from "./errors.js";
+
+export const cursorDateSchema = z.string().datetime().transform((value) => new Date(value).toISOString());
+
+const cursorSchema = z.object({ id: z.string().min(1) });
+
 /**
  * カーソル方式のページネーション用ヘルパー。
  *
@@ -9,14 +16,17 @@ export function encodeCursor(key) {
   return Buffer.from(JSON.stringify(key), "utf8").toString("base64url");
 }
 
-export function decodeCursor(cursor) {
-  if (!cursor) return null;
+export function decodeCursor(cursor, fields = {}) {
+  if (cursor === undefined) return null;
 
   try {
-    const parsed = JSON.parse(Buffer.from(String(cursor), "base64url").toString("utf8"));
-    return typeof parsed?.id === "string" ? parsed : null;
+    if (typeof cursor !== "string" || !/^[A-Za-z0-9_-]+$/.test(cursor)) {
+      throw new Error("Invalid cursor encoding");
+    }
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    return cursorSchema.extend(fields).parse(parsed);
   } catch {
-    return null;
+    throw Errors.validation("カーソルの形式が不正です");
   }
 }
 

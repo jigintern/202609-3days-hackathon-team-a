@@ -5,7 +5,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
 import { isUploadedImageUrl } from "../../lib/supabaseStorage.js";
 import { normalizeOptional } from "../../utils/normalizeOptional.js";
-import { decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
+import { cursorDateSchema, decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
 import { env } from "../../lib/env.js";
 
 export const adminEventsRouter = Router();
@@ -36,7 +36,7 @@ adminEventsRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const limit = parseLimit(req.query.limit, { fallback: 50, max: 100 });
-    const cursor = decodeCursor(req.query.cursor);
+    const cursor = decodeCursor(req.query.cursor, { startsAt: cursorDateSchema });
 
     // 単に件数で打ち切ると上限を超えた分に管理画面から到達できなくなるため、
     // (startsAt, id) の複合キーで続きを取れるようにする
