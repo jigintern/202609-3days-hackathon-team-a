@@ -1,10 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
-import { listPosts, createPost, addReaction, removeReaction } from '../api/posts.js'
+import { listPosts, createPost, deletePost, addReaction, removeReaction } from '../api/posts.js'
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
 import { uploadImages } from '../api/uploads.js'
-import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 
 const POST_MAX_LENGTH = 280
@@ -94,7 +93,8 @@ function UserPostsTab({ eventId }) {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [reactionPending, setReactionPending] = useState(() => new Set())
-  const [reactionError, setReactionError] = useState(null)
+  const [deletingPostId, setDeletingPostId] = useState(null)
+  const [actionError, setActionError] = useState(null)
   const requestRef = useRef(0)
   const fileInputRef = useRef(null)
 
@@ -197,21 +197,41 @@ function UserPostsTab({ eventId }) {
     const requestId = requestRef.current
 
     setReactionPending((prev) => new Set(prev).add(post.id))
-    setReactionError(null)
+    setActionError(null)
     applyReaction(post.id, reacted)
 
     try {
-      await (reacted ? addReaction(post.id) : removeReaction(post.id))
+      const state = reacted ? await addReaction(post.id) : await removeReaction(post.id)
+      // 他の人のいいねも含めた実数がサーバーから返るので、楽観更新の値を置き換える
+      if (requestRef.current === requestId) {
+        setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, ...state } : p)))
+      }
     } catch (err) {
       // 一覧が再取得されていた場合、楽観更新の取り消しは新しいデータを壊すので行わない
       if (requestRef.current === requestId) applyReaction(post.id, !reacted)
-      setReactionError(err instanceof ApiError ? err.message : 'いいねの更新に失敗しました')
+      setActionError(err instanceof ApiError ? err.message : 'いいねの更新に失敗しました')
     } finally {
       setReactionPending((prev) => {
         const next = new Set(prev)
         next.delete(post.id)
         return next
       })
+    }
+  }
+
+  async function handleDeletePost(postId) {
+    if (deletingPostId) return
+
+    setDeletingPostId(postId)
+    setActionError(null)
+    try {
+      await deletePost(postId)
+      // カーソルが配列オフセットのため、件数が減ると続きの取得がずれる。一覧ごと取り直す
+      fetchFirstPage()
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : '投稿の削除に失敗しました')
+    } finally {
+      setDeletingPostId(null)
     }
   }
 
@@ -282,7 +302,7 @@ function UserPostsTab({ eventId }) {
 
       {loading && <p>読み込み中...</p>}
       {error && <p role="alert">{error}</p>}
-      {reactionError && <p role="alert">{reactionError}</p>}
+      {actionError && <p role="alert">{actionError}</p>}
       {!loading && !error && posts.length === 0 && <p>投稿はまだありません。</p>}
 
       {posts.length > 0 && (
@@ -308,6 +328,15 @@ function UserPostsTab({ eventId }) {
                   {post.reactedByMe ? '♥' : '♡'} {post.reactionCount}
                 </button>
                 <small>{formatDateTime(post.createdAt)}</small>
+                {post.isMine && (
+                  <button
+                    type="button"
+                    disabled={deletingPostId === post.id}
+                    onClick={() => handleDeletePost(post.id)}
+                  >
+                    {deletingPostId === post.id ? '削除中...' : '削除'}
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -324,7 +353,6 @@ function UserPostsTab({ eventId }) {
 }
 
 function ChatTab({ eventId }) {
-  const { profile } = useAuth()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -332,6 +360,7 @@ function ChatTab({ eventId }) {
   const [sending, setSending] = useState(false)
   const [actionError, setActionError] = useState(null)
   const lastMessageRef = useRef(null)
+  const polledAtRef = useRef(null)
   const listRef = useRef(null)
   const atBottomRef = useRef(true)
 
@@ -351,6 +380,13 @@ function ChatTab({ eventId }) {
   useLayoutEffect(() => {
     if (atBottomRef.current) scrollToBottom()
   }, [messages])
+
+  // ポーリングでは新着しか届かないため、サーバーが返す削除済みidを画面からも取り除く
+  function removeMessages(deletedIds) {
+    if (!deletedIds || deletedIds.length === 0) return
+    const deleted = new Set(deletedIds)
+    setMessages((prev) => prev.filter((message) => !deleted.has(message.id)))
+  }
 
   function mergeMessages(incoming) {
     if (incoming.length === 0) return
@@ -379,9 +415,14 @@ function ChatTab({ eventId }) {
     // 直前に取得した発言以降の差分のみを一定間隔で取りに行く
     async function poll() {
       try {
-        const body = await listMessages(eventId, { after: lastMessageRef.current?.id })
+        const body = await listMessages(eventId, {
+          after: lastMessageRef.current?.id,
+          deletedSince: polledAtRef.current,
+        })
         if (cancelled) return
         mergeMessages(body.messages)
+        removeMessages(body.deletedIds)
+        polledAtRef.current = body.polledAt
         setError(null)
       } catch (err) {
         if (cancelled) return
@@ -395,12 +436,14 @@ function ChatTab({ eventId }) {
     setMessages([])
     lastMessageRef.current = null
     atBottomRef.current = true
+    polledAtRef.current = null
     listMessages(eventId)
       .then((body) => {
         if (cancelled) return
         setMessages(body.messages)
         const newest = body.messages.at(-1)
         lastMessageRef.current = newest ? { id: newest.id, createdAt: newest.createdAt } : null
+        polledAtRef.current = body.polledAt
         setError(null)
       })
       .catch((err) => {
@@ -471,7 +514,7 @@ function ChatTab({ eventId }) {
                 <small> {formatDateTime(message.createdAt)}</small>
               </p>
               <p>{message.body}</p>
-              {message.authorId === profile?.id && (
+              {message.isMine && (
                 <button type="button" onClick={() => handleDelete(message.id)}>
                   削除
                 </button>
