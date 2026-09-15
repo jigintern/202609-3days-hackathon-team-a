@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
 import Layout from './Layout.jsx'
 import AdminNav from './AdminNav.jsx'
+import '../styles/admin.css'
 
 function AdminRoute({ children }) {
   const { user, profile, profileRequired, loading } = useAuth()

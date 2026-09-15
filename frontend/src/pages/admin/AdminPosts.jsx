@@ -52,12 +52,21 @@ function AdminPosts() {
       </h1>
 
       <div className="admin-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'posts'} onClick={() => setTab('posts')}>
+        <button
+          type="button"
+          role="tab"
+          id="admin-tab-posts"
+          aria-controls="admin-panel-posts"
+          aria-selected={tab === 'posts'}
+          onClick={() => setTab('posts')}
+        >
           投稿（{data.posts.length}）
         </button>
         <button
           type="button"
           role="tab"
+          id="admin-tab-messages"
+          aria-controls="admin-panel-messages"
           aria-selected={tab === 'messages'}
           onClick={() => setTab('messages')}
         >
@@ -66,7 +75,7 @@ function AdminPosts() {
       </div>
 
       {tab === 'posts' && (
-        <>
+        <div role="tabpanel" id="admin-panel-posts" aria-labelledby="admin-tab-posts">
           {postError && <p role="alert">{postError}</p>}
           <ul className="admin-list">
             {data.posts.map((post) => (
@@ -97,11 +106,11 @@ function AdminPosts() {
             ))}
           </ul>
           {data.posts.length === 0 && <p className="admin-empty">投稿はありません。</p>}
-        </>
+        </div>
       )}
 
       {tab === 'messages' && (
-        <>
+        <div role="tabpanel" id="admin-panel-messages" aria-labelledby="admin-tab-messages">
           {messageError && <p role="alert">{messageError}</p>}
           <ul className="admin-list">
             {data.messages.map((message) => (
@@ -127,7 +136,7 @@ function AdminPosts() {
             ))}
           </ul>
           {data.messages.length === 0 && <p className="admin-empty">発言はありません。</p>}
-        </>
+        </div>
       )}
     </>
   )

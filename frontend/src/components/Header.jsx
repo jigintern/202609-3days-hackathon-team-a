@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import AdminEntryLink from './AdminEntryLink.jsx'
 
 function Header() {
-  const { profile, signOut } = useAuth()
+  const { signOut } = useAuth()
 
   return (
     <header className="header">
@@ -13,7 +14,7 @@ function Header() {
         <nav className="header-nav">
           <Link to="/">ホーム</Link>
           <Link to="/artists">アーティスト</Link>
-          {profile?.role === 'admin' && <Link to="/admin/users">管理画面</Link>}
+          <AdminEntryLink />
           <button type="button" className="btn-secondary" onClick={signOut}>
             ログアウト
           </button>
