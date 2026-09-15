@@ -12,6 +12,7 @@ import { eventPostsRouter, postsRouter } from "./routes/posts.js";
 import { eventMessagesRouter, messagesRouter } from "./routes/messages.js";
 import { uploadsRouter } from "./routes/uploads.js";
 import { eventRequestsRouter } from "./routes/eventRequests.js";
+import { vaultRouter } from "./routes/vault.js";
 import { adminRouter } from "./routes/admin/index.js";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/posts", ...authed, postsRouter);
 app.use("/api/messages", ...authed, messagesRouter);
 app.use("/api/uploads", ...authed, uploadsRouter);
 app.use("/api/event-requests", ...authed, eventRequestsRouter);
+app.use("/api/vault", ...authed, vaultRouter);
 app.use("/api/admin", ...authed, adminRouter);
 
 app.use(notFoundHandler);
