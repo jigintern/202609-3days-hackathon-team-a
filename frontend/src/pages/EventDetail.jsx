@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
-import { listPosts } from '../api/posts.js'
+import { listPosts, createPost } from '../api/posts.js'
 import { ApiError } from '../lib/api.js'
+
+const POST_MAX_LENGTH = 280
 
 const TABS = [
   { key: 'official', label: '公式アカウント' },
@@ -76,9 +78,12 @@ function UserPostsTab({ eventId }) {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
+  const [draft, setDraft] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
   const requestRef = useRef(0)
 
-  useEffect(() => {
+  function fetchFirstPage() {
     const requestId = ++requestRef.current
     setLoading(true)
     setError(null)
@@ -95,11 +100,33 @@ function UserPostsTab({ eventId }) {
       .finally(() => {
         if (requestRef.current === requestId) setLoading(false)
       })
+  }
+
+  useEffect(() => {
+    fetchFirstPage()
     return () => {
       // ソート変更・アンマウント後にこの世代の結果を反映させない
       requestRef.current += 1
     }
   }, [eventId, sort])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    const trimmed = draft.trim()
+    if (!trimmed) return
+
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await createPost(eventId, { body: trimmed })
+      setDraft('')
+      fetchFirstPage()
+    } catch (err) {
+      setSubmitError(err instanceof ApiError ? err.message : '投稿に失敗しました')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   async function loadMore() {
     const requestId = requestRef.current
@@ -119,6 +146,23 @@ function UserPostsTab({ eventId }) {
 
   return (
     <div>
+      <form onSubmit={handleSubmit}>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={POST_MAX_LENGTH}
+          rows={3}
+          placeholder="投稿する"
+        />
+        <div>
+          {draft.length} / {POST_MAX_LENGTH}
+        </div>
+        {submitError && <p role="alert">{submitError}</p>}
+        <button type="submit" disabled={submitting || draft.trim().length === 0}>
+          {submitting ? '投稿中...' : '投稿する'}
+        </button>
+      </form>
+
       <div>
         <button type="button" aria-pressed={sort === 'reactions'} onClick={() => setSort('reactions')}>
           いいね数順
