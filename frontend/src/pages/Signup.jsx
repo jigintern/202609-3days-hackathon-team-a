@@ -27,10 +27,10 @@ function Signup() {
 
   if (done) {
     return (
-      <main>
+      <main className="card auth-page">
         <h1>登録完了</h1>
         <p>確認メールを送信しました。メール内のリンクを確認後、ログインしてください。</p>
-        <button type="button" onClick={() => navigate('/login')}>
+        <button type="button" className="btn-primary" onClick={() => navigate('/login')}>
           ログイン画面へ
         </button>
       </main>
@@ -38,7 +38,7 @@ function Signup() {
   }
 
   return (
-    <main>
+    <main className="card auth-page">
       <h1>新規登録</h1>
       <form onSubmit={handleSubmit}>
         <div>
@@ -63,7 +63,7 @@ function Signup() {
           />
         </div>
         {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? '登録中...' : '登録する'}
         </button>
       </form>

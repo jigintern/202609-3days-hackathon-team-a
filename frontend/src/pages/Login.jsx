@@ -25,7 +25,7 @@ function Login() {
   }
 
   return (
-    <main>
+    <main className="card auth-page">
       <h1>ログイン</h1>
       <form onSubmit={handleSubmit}>
         <div>
@@ -49,7 +49,7 @@ function Login() {
           />
         </div>
         {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? 'ログイン中...' : 'ログイン'}
         </button>
       </form>

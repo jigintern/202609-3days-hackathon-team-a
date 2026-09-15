@@ -18,9 +18,9 @@ function Artists() {
   return (
     <main>
       <h1>アーティスト一覧</h1>
-      <ul>
+      <ul className="grid">
         {artists.map((artist) => (
-          <li key={artist.id}>
+          <li key={artist.id} className="card grid-item">
             <span>{artist.name}</span>
             <FollowButton
               artistId={artist.id}
