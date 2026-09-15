@@ -36,6 +36,17 @@ npm run dev
 
 `http://localhost:3000/api/health` が `{ "ok": true }` を返せば起動確認OK。
 
+## 回帰テスト
+
+コードレビューで見つかった不具合の再発を防ぐテスト。実DBとSupabaseに接続して動くため、サーバーを起動した状態で実行する。
+
+```bash
+PORT=3999 npm start
+node tests/regression.mjs
+```
+
+使い捨てのユーザー・投稿・アップロード画像はテストの最後に削除される。`TEST_API_BASE` で接続先を変更できる。
+
 ## ディレクトリ構成
 
 ```
