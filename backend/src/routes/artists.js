@@ -132,14 +132,15 @@ artistsRouter.delete(
 artistsRouter.delete(
   "/:artistId/follow",
   asyncHandler(async (req, res) => {
-    await prisma.follow.deleteMany({
-      where: { userId: req.user.id, artistId: req.params.artistId },
-    });
-
-    await prisma.user.updateMany({
-      where: { id: req.user.id, oshiArtistId: req.params.artistId },
-      data: { oshiArtistId: null },
-    });
+    await prisma.$transaction([
+      prisma.follow.deleteMany({
+        where: { userId: req.user.id, artistId: req.params.artistId },
+      }),
+      prisma.user.updateMany({
+        where: { id: req.user.id, oshiArtistId: req.params.artistId },
+        data: { oshiArtistId: null },
+      }),
+    ]);
 
     res.status(204).end();
   })

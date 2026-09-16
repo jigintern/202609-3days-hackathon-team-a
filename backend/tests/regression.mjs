@@ -106,17 +106,17 @@ async function main() {
     const event = await prisma.event.findFirst({ where: { artistId: artist.id } });
     if (!artist || !event) throw new Error("シードデータが必要です（npm run prisma:seed）");
 
-    console.log("\n--- ホームの全イベント表示・フォロー優先順 ---");
+    console.log("\n--- ホームの全イベント表示・最推し・フォロー優先順 ---");
     const homeArtists = [];
     for (const name of ["ホーム回帰フォロー対象", "ホーム回帰フォロー対象外", "ホーム回帰フォローのみ"]) {
       const homeArtist = await prisma.artist.create({ data: { name } });
       createdArtistIds.push(homeArtist.id);
       homeArtists.push(homeArtist);
     }
-    // 挿入順と開催順を逆にし、フォロー対象外のイベントをより早く開催する。
+    // 挿入順と開催順を逆にし、フォロー対象外、フォローのみ、最推しの順に早く開催する。
     const homeEvents = [];
     const homeNow = Date.now();
-    for (const [artistIndex, days] of [[0, 4], [1, 2], [0, 3], [1, 1], [2, 5], [0, -1]]) {
+    for (const [artistIndex, days] of [[0, 4], [1, 2], [0, 3], [1, 1], [2, 2.5], [0, -1]]) {
       const homeEvent = await prisma.event.create({
         data: {
           artistId: homeArtists[artistIndex].id,
@@ -157,7 +157,7 @@ async function main() {
     const followingEvents = following.json?.events ?? [];
     const fixtureIds = followingEvents.filter((e) => upcomingIds.includes(e.id)).map((e) => e.id);
     check(
-      "開催日が遅くてもフォロー中を優先し、各グループ内は開催日時昇順",
+      "開催日が遅くても最推し、フォローのみ、フォロー対象外の順に優先し、各グループ内は開催日時昇順",
       following.status === 200 &&
         fixtureIds.join(",") === [homeEvents[2], homeEvents[0], homeEvents[4], homeEvents[3], homeEvents[1]].map((e) => e.id).join(","),
       fixtureIds
@@ -176,6 +176,30 @@ async function main() {
         e.id === homeEvents[4].id && e.artist.isFollowing === true && e.artist.isOshi === false
       ),
       followingEvents
+    );
+
+    const unfollow = await req(`/artists/${homeArtists[0].id}/follow`, {
+      method: "DELETE",
+      token: user.token,
+    });
+    check("最推しアーティストのフォロー解除が成功する", unfollow.status === 204, unfollow);
+    const afterUnfollow = await req("/home", { token: user.token });
+    const afterUnfollowEvents = afterUnfollow.json?.events ?? [];
+    check(
+      "フォロー解除後も元の最推しの開催予定イベントが残り、両フラグがfalseになる",
+      afterUnfollow.status === 200 && [homeEvents[0], homeEvents[2]].every((event) =>
+        afterUnfollowEvents.some((e) =>
+          e.id === event.id && e.artist.isFollowing === false && e.artist.isOshi === false
+        )
+      ),
+      afterUnfollowEvents
+    );
+    const afterUnfollowIds = afterUnfollowEvents.filter((e) => upcomingIds.includes(e.id)).map((e) => e.id);
+    check(
+      "フォロー解除後はフォローのみを優先し、元の最推しはフォロー対象外として開催日時昇順になる",
+      afterUnfollow.status === 200 &&
+        afterUnfollowIds.join(",") === [homeEvents[4], homeEvents[3], homeEvents[1], homeEvents[2], homeEvents[0]].map((e) => e.id).join(","),
+      afterUnfollowIds
     );
 
     console.log("\n--- プロフィール作成の競合（500にならないこと） ---");
