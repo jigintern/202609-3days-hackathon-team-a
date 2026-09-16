@@ -152,19 +152,24 @@ label {
   margin: 0;
 }
 
-.grid-item {
+.artist-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.75rem;
   min-width: 0;
 }
 
-.grid-item > span,
-.grid-item > a {
+.artist-card > a {
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.artist-card .btn-primary,
+.artist-card .btn-secondary {
+  text-align: center;
 }
 
 .auth-page {
