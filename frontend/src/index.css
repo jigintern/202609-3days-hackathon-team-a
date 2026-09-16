@@ -753,3 +753,110 @@ label {
 .skeleton-line.is-medium {
   width: 70%;
 }
+
+/* ===== 汎用 ===== */
+
+.stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.form-card {
+  max-width: 560px;
+}
+
+.form-card form > div {
+  margin-bottom: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15em 0.9em;
+}
+
+.badge-pending {
+  background: #fff4e5;
+  color: #b26a00;
+}
+
+.badge-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-rejected {
+  background: #fdecee;
+  color: var(--color-danger);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ===== アーティスト詳細 ===== */
+
+.artist-hero {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.artist-hero img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.artist-hero-body {
+  flex: 1;
+  min-width: 220px;
+}
+
+.artist-hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.artist-hero-body p {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ===== イベント追加申請 ===== */
+
+.request-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5em;
+}
+
+.request-card p.request-title {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.request-card p {
+  margin: 0.2em 0;
+  color: var(--color-text-muted);
+}
