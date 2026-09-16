@@ -9,7 +9,7 @@ function Header() {
     <header className="header">
       <div className="header-inner">
         <Link to="/" className="header-logo">
-          推し活アプリ
+          推しイベ！
         </Link>
         <nav className="header-nav">
           <Link to="/">ホーム</Link>
