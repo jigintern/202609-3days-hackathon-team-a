@@ -47,22 +47,28 @@ export function isUploadedImageUrl(value) {
 
 /**
  * 画像バッファをSupabase Storageにアップロードし、公開URLを返す。
+ * bucket省略時は投稿画像用バケットを使う。
  */
-export async function uploadImage({ buffer, mimetype, userId }) {
+export async function uploadImage({ buffer, mimetype, userId, bucket = env.supabaseStorageBucket }) {
   const ext = EXTENSION_BY_MIME[mimetype];
   const path = `${userId}/${Date.now()}-${randomUUID()}.${ext}`;
 
   const { error } = await supabase.storage
-    .from(env.supabaseStorageBucket)
+    .from(bucket)
     .upload(path, buffer, { contentType: mimetype, upsert: false });
 
   if (error) {
     throw new Error(`画像のアップロードに失敗しました: ${error.message}`);
   }
 
-  const { data } = supabase.storage
-    .from(env.supabaseStorageBucket)
-    .getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
 
   return data.publicUrl;
+}
+
+/**
+ * アーティストのプロフィール画像専用バケットにアップロードする。
+ */
+export function uploadProfileImage({ buffer, mimetype, userId }) {
+  return uploadImage({ buffer, mimetype, userId, bucket: env.supabaseProfileImagesBucket });
 }

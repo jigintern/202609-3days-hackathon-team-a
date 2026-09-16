@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
-import { createArtist, getAdminArtists, updateArtist } from '../../api/admin.js'
-import { uploadImages } from '../../api/uploads.js'
+import { createArtist, getAdminArtists, updateArtist, uploadArtistImage } from '../../api/admin.js'
 import { useFetch } from '../../hooks/useFetch.js'
 import { useAsyncAction } from '../../hooks/useAsyncAction.js'
 
@@ -52,8 +51,8 @@ function AdminArtists() {
   }
 
   const { run: uploadImage, pending: uploading, error: uploadError } = useAsyncAction(async (file) => {
-    const body = await uploadImages([file])
-    setForm((prev) => ({ ...prev, imageUrl: body.urls[0] }))
+    const body = await uploadArtistImage(file)
+    setForm((prev) => ({ ...prev, imageUrl: body.url }))
   })
 
   const { run: submit, pending, error: actionError } = useAsyncAction(async () => {
