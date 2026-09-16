@@ -19,3 +19,11 @@ export function followArtist(artistId) {
 export function unfollowArtist(artistId) {
   return apiFetch(`/api/artists/${artistId}/follow`, { method: 'DELETE' })
 }
+
+export function setOshiArtist(artistId) {
+  return apiFetch(`/api/artists/${artistId}/oshi`, { method: 'POST' })
+}
+
+export function unsetOshiArtist(artistId) {
+  return apiFetch(`/api/artists/${artistId}/oshi`, { method: 'DELETE' })
+}

@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
 import FollowButton from './FollowButton.jsx'
 import ArtistThumbnail from './ArtistThumbnail.jsx'
+import OshiButton from './OshiButton.jsx'
 
-function ArtistListItem({ artist, onFollowChange }) {
+function ArtistListItem({ artist, onFollowChange, onOshiChange }) {
   return (
-    <li className="card artist-card">
+    <li className={`card artist-card${artist.isOshi ? ' is-oshi' : ''}`}>
       <Link to={`/artists/${artist.id}`}>
         <ArtistThumbnail artist={artist} />
       </Link>
@@ -13,6 +14,9 @@ function ArtistListItem({ artist, onFollowChange }) {
         isFollowing={artist.isFollowing}
         onChange={(isFollowing) => onFollowChange(artist.id, isFollowing)}
       />
+      {artist.isFollowing && (
+        <OshiButton artistId={artist.id} isOshi={artist.isOshi} onOshiChange={onOshiChange} />
+      )}
     </li>
   )
 }

@@ -7,6 +7,8 @@
   --color-text-muted: #666666;
   --color-border: #e0e0e0;
   --color-danger: #d32f2f;
+  --color-oshi: #ff8c1a;
+  --color-oshi-bg: #ffe8cc;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --font-sans: 'Hiragino Sans', 'Yu Gothic', 'Segoe UI', system-ui, sans-serif;
@@ -101,11 +103,33 @@ label {
   cursor: not-allowed;
 }
 
+.btn-oshi {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--color-oshi);
+  color: #fff;
+  border: 1px solid var(--color-oshi);
+}
+
+.btn-oshi:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .card {
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1rem;
+}
+
+.is-oshi {
+  background: var(--color-oshi-bg);
 }
 
 .event-card {
@@ -169,9 +193,13 @@ label {
   gap: 1rem;
 }
 
+.search-bar {
+  margin-bottom: 1rem;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1rem;
   list-style: none;
   padding: 0;
@@ -194,7 +222,8 @@ label {
 }
 
 .artist-card .btn-primary,
-.artist-card .btn-secondary {
+.artist-card .btn-secondary,
+.artist-card .btn-oshi {
   text-align: center;
 }
 
@@ -273,7 +302,7 @@ label {
 }
 
 .vault-list {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
 }
 
 .vault-card {
@@ -727,4 +756,111 @@ label {
 
 .skeleton-line.is-medium {
   width: 70%;
+}
+
+/* ===== 汎用 ===== */
+
+.stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.form-card {
+  max-width: 560px;
+}
+
+.form-card form > div {
+  margin-bottom: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15em 0.9em;
+}
+
+.badge-pending {
+  background: #fff4e5;
+  color: #b26a00;
+}
+
+.badge-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-rejected {
+  background: #fdecee;
+  color: var(--color-danger);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ===== アーティスト詳細 ===== */
+
+.artist-hero {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.artist-hero img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.artist-hero-body {
+  flex: 1;
+  min-width: 220px;
+}
+
+.artist-hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.artist-hero-body p {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ===== イベント追加申請 ===== */
+
+.request-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5em;
+}
+
+.request-card p.request-title {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.request-card p {
+  margin: 0.2em 0;
+  color: var(--color-text-muted);
 }

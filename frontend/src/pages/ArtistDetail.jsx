@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getArtist, getArtistEvents } from '../api/artists.js'
 import { useFetch } from '../hooks/useFetch.js'
 import FollowButton from '../components/FollowButton.jsx'
+import OshiButton from '../components/OshiButton.jsx'
 import EventListItem from '../components/EventListItem.jsx'
 
 function ArtistDetail() {
@@ -33,36 +34,58 @@ function ArtistDetail() {
 
   return (
     <main>
-      {artist.imageUrl && !imageFailed && (
-        <img
-          src={artist.imageUrl}
-          alt={artist.name}
-          width={120}
-          onError={() => setImageFailed(true)}
-        />
-      )}
-      <h1>{artist.name}</h1>
-      {artist.description && <p>{artist.description}</p>}
-      <FollowButton
-        artistId={artist.id}
-        isFollowing={artist.isFollowing}
-        onChange={(isFollowing) => setArtist((prev) => ({ ...prev, isFollowing }))}
-      />
+      <div className="artist-hero">
+        {artist.imageUrl && !imageFailed && (
+          <img src={artist.imageUrl} alt="" onError={() => setImageFailed(true)} />
+        )}
+        <div className="artist-hero-body">
+          <h1>{artist.name}</h1>
+          {artist.description && <p>{artist.description}</p>}
+          <div className="button-row">
+            <FollowButton
+              artistId={artist.id}
+              isFollowing={artist.isFollowing}
+              onChange={(isFollowing) =>
+                setArtist((prev) => ({ ...prev, isFollowing, isOshi: isFollowing && prev.isOshi }))
+              }
+            />
+            {artist.isFollowing && (
+              <OshiButton
+                artistId={artist.id}
+                isOshi={artist.isOshi}
+                onOshiChange={(artistId, isOshi) => setArtist((prev) => ({ ...prev, isOshi }))}
+              />
+            )}
+          </div>
+        </div>
+      </div>
 
       <h2>イベント</h2>
-      <div>
-        <button type="button" onClick={() => setScope('upcoming')} disabled={scope === 'upcoming'}>
+      <div className="button-row">
+        <button
+          type="button"
+          className={scope === 'upcoming' ? 'btn-primary' : 'btn-secondary'}
+          aria-pressed={scope === 'upcoming'}
+          onClick={() => setScope('upcoming')}
+        >
           開催予定
         </button>
-        <button type="button" onClick={() => setScope('past')} disabled={scope === 'past'}>
+        <button
+          type="button"
+          className={scope === 'past' ? 'btn-primary' : 'btn-secondary'}
+          aria-pressed={scope === 'past'}
+          onClick={() => setScope('past')}
+        >
           過去の公演
         </button>
       </div>
       {eventsError && <p role="alert">{eventsError}</p>}
       {eventsLoading && <p>読み込み中...</p>}
-      {!eventsLoading && events && events.length === 0 && <p>該当するイベントはありません</p>}
+      {!eventsLoading && events && events.length === 0 && (
+        <p className="muted">該当するイベントはありません</p>
+      )}
       {!eventsLoading && events && events.length > 0 && (
-        <ul>
+        <ul className="stack">
           {events.map((event) => (
             <EventListItem key={event.id} event={event} />
           ))}

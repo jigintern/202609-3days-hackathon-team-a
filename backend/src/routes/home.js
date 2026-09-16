@@ -31,7 +31,7 @@ homeRouter.get(
         venue: event.venue,
         prefecture: event.prefecture,
         startsAt: event.startsAt,
-        artist: event.artist,
+        artist: { ...event.artist, isOshi: event.artist.id === req.user.oshiArtistId },
       })),
     });
   })
