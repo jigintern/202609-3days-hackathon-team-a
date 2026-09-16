@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getHome } from '../api/home.js'
+import ArtistThumbnail from '../components/ArtistThumbnail.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 import { formatDateTime } from '../lib/formatDate.js'
@@ -50,7 +51,9 @@ function Home() {
             <li key={event.id} className="card event-card">
               <Link to={`/events/${event.id}`}>
                 <p className="event-card-title">{event.title}</p>
-                <p>{event.artist.name}</p>
+                <p>
+                  <ArtistThumbnail artist={event.artist} />
+                </p>
                 <p>{formatDateTime(event.startsAt)}</p>
                 <p>
                   {event.venue}

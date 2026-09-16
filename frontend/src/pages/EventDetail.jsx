@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
+import ArtistThumbnail from '../components/ArtistThumbnail.jsx'
 import { listPosts, createPost, deletePost, addReaction, removeReaction } from '../api/posts.js'
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
 import { uploadImages } from '../api/uploads.js'
@@ -562,7 +563,9 @@ function EventDetail() {
     <main>
       <header>
         <h1>{event.title}</h1>
-        <p>{event.artist.name}</p>
+        <p>
+          <ArtistThumbnail artist={event.artist} size={56} />
+        </p>
         <p>{formatDateTime(event.startsAt)}</p>
         <p>{event.venue}</p>
       </header>
