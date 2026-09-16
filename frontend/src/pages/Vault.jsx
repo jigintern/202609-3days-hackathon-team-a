@@ -93,7 +93,7 @@ function Vault() {
   }
 
   return (
-    <main className="vault-page">
+    <main>
       <p>
         <Link to="/">ホームに戻る</Link>
       </p>
