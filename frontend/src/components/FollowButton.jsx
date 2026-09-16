@@ -12,7 +12,7 @@ function FollowButton({ artistId, isFollowing, onChange }) {
     <>
       <button
         type="button"
-        className={isFollowing ? 'btn-secondary' : 'btn-primary'}
+        className={isFollowing ? 'btn-follow-active' : 'btn-follow'}
         onClick={run}
         disabled={pending}
       >

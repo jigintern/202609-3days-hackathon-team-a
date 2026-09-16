@@ -9,6 +9,9 @@
   --color-danger: #d32f2f;
   --color-oshi: #ff8c1a;
   --color-oshi-bg: #ffe8cc;
+  --color-follow: #29b6f6;
+  --color-follow-dark: #039be5;
+  --color-follow-bg: #e3f6fd;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --font-sans: 'Hiragino Sans', 'Yu Gothic', 'Segoe UI', system-ui, sans-serif;
@@ -121,6 +124,44 @@ label {
   cursor: not-allowed;
 }
 
+.btn-follow,
+.btn-follow-active {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-follow {
+  background: var(--color-follow);
+  color: #fff;
+  border: 1px solid var(--color-follow);
+}
+
+.btn-follow:hover:not(:disabled) {
+  background: var(--color-follow-dark);
+  border-color: var(--color-follow-dark);
+}
+
+.btn-follow-active {
+  background: #fff;
+  color: var(--color-follow-dark);
+  border: 1px solid var(--color-follow);
+}
+
+.btn-follow-active:hover:not(:disabled) {
+  background: var(--color-follow-bg);
+}
+
+.btn-follow:disabled,
+.btn-follow-active:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .card {
   background: var(--color-surface);
   border-radius: var(--radius);
@@ -223,7 +264,9 @@ label {
 
 .artist-card .btn-primary,
 .artist-card .btn-secondary,
-.artist-card .btn-oshi {
+.artist-card .btn-oshi,
+.artist-card .btn-follow,
+.artist-card .btn-follow-active {
   text-align: center;
 }
 
