@@ -7,6 +7,8 @@ import { Errors } from "../utils/errors.js";
 export const eventRequestsRouter = Router();
 
 const createEventRequestSchema = z.object({
+  // 一覧から選ばれた場合のみ入る。「その他」で自由入力された場合は付かない
+  artistId: z.string().uuid().optional(),
   artistName: z.string().trim().min(1).max(100),
   title: z.string().trim().min(1).max(100),
   venue: z.string().trim().max(200).optional(),
@@ -17,6 +19,7 @@ const createEventRequestSchema = z.object({
 function serializeEventRequest(request) {
   return {
     id: request.id,
+    artistId: request.artistId,
     artistName: request.artistName,
     title: request.title,
     venue: request.venue,
@@ -33,6 +36,12 @@ eventRequestsRouter.post(
     const parsed = createEventRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       throw Errors.validation(parsed.error.issues[0]?.message ?? "入力が不正です");
+    }
+
+    // 存在しないIDをそのまま入れると外部キー違反で500になるため、先に確かめる
+    if (parsed.data.artistId) {
+      const artist = await prisma.artist.findUnique({ where: { id: parsed.data.artistId } });
+      if (!artist) throw Errors.validation("選択されたアーティストが見つかりません");
     }
 
     const request = await prisma.eventRequest.create({
