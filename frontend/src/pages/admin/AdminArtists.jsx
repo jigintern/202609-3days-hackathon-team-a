@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { createArtist, getAdminArtists, updateArtist } from '../../api/admin.js'
+import { uploadImages } from '../../api/uploads.js'
 import { useFetch } from '../../hooks/useFetch.js'
 import { useAsyncAction } from '../../hooks/useAsyncAction.js'
 
@@ -49,6 +50,11 @@ function AdminArtists() {
       imageUrl: artist.imageUrl ?? '',
     })
   }
+
+  const { run: uploadImage, pending: uploading, error: uploadError } = useAsyncAction(async (file) => {
+    const body = await uploadImages([file])
+    setForm((prev) => ({ ...prev, imageUrl: body.urls[0] }))
+  })
 
   const { run: submit, pending, error: actionError } = useAsyncAction(async () => {
     const payload = toPayload(form, { isEdit: Boolean(editingId) })
@@ -119,6 +125,30 @@ function AdminArtists() {
             placeholder="https://..."
           />
         </label>
+        <label>
+          画像をアップロード
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) uploadImage(file)
+            }}
+          />
+        </label>
+        {uploading && <p className="admin-form-wide">アップロード中...</p>}
+        {uploadError && (
+          <p className="admin-form-wide" role="alert">
+            {uploadError}
+          </p>
+        )}
+        {form.imageUrl && (
+          <p className="admin-form-wide">
+            <img src={form.imageUrl} alt="プレビュー" width={120} />
+          </p>
+        )}
         {actionError && <p className="admin-form-wide" role="alert">{actionError}</p>}
         <div className="admin-form-actions">
           <button type="submit" className="btn-primary" disabled={pending || !form.name.trim()}>
