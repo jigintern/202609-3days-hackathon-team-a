@@ -212,3 +212,87 @@ label {
   width: 100%;
   margin-top: 0.5rem;
 }
+
+/* Vault */
+.vault-form .btn-secondary {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.vault-field,
+.vault-credential-types {
+  margin: 0 0 1rem;
+}
+
+.vault-credential-types {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.vault-credential-legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.vault-radio-group,
+.vault-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.vault-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.vault-radio-option:has(input:checked) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.vault-radio-option input[type='radio'] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+.vault-toolbar {
+  margin-bottom: 1rem;
+}
+
+.vault-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.vault-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vault-card h2 {
+  margin: 0 0 0.5rem;
+}
+
+.vault-card p {
+  margin: 0 0 0.75rem;
+}
+
+.vault-card p .btn-secondary {
+  margin: 0.25rem 0 0.25rem 0.5rem;
+}
+
+.vault-card > .btn-secondary + .btn-secondary {
+  margin-left: 0.5rem;
+}
