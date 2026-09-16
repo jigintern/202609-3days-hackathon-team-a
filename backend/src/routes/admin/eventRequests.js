@@ -61,15 +61,19 @@ adminEventRequestsRouter.patch(
       return res.json({ eventRequest: request });
     }
 
-    // Eventは会場と開催日時が必須。申請では任意入力のため、欠けていると自動では作れない。
-    // ここで弾くと申請がpendingのまま詰まるので、状態だけ承認にして運営に知らせる。
-    if (!existing.venue || !existing.startsAt) {
+    // Eventは開催日時が必須。日付だけは代わりの値を決めようが無いので、
+    // 未入力の申請は状態だけ承認し、運営がイベント管理から登録する。
+    if (!existing.startsAt) {
       const request = await prisma.eventRequest.update({
         where: { id: existing.id },
         data: { status: "approved" },
       });
       return res.json({ eventRequest: request, event: null });
     }
+
+    // 会場は未入力でも申請できるため、空のままEventを作れるよう既定値を入れる。
+    // ここで作成を諦めると「承認したのにイベントができない」状態になってしまう。
+    const venue = existing.venue?.trim() || "未定";
 
     const { request, event } = await prisma.$transaction(async (tx) => {
       // 二人の運営が同時に承認してもイベントが二重に作られないよう、
@@ -101,7 +105,7 @@ adminEventRequestsRouter.patch(
         data: {
           artistId,
           title: existing.title,
-          venue: existing.venue,
+          venue,
           startsAt: existing.startsAt,
         },
       });
