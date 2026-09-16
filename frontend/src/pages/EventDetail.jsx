@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
 import ArtistThumbnail from '../components/ArtistThumbnail.jsx'
@@ -6,7 +6,8 @@ import { listPosts, createPost, deletePost, addReaction, removeReaction } from '
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
 import { uploadImages } from '../api/uploads.js'
 import { ApiError } from '../lib/api.js'
-import { formatDateTime } from '../lib/formatDate.js'
+import { formatDate, formatDateTime, formatTime } from '../lib/formatDate.js'
+import ImageLightbox from '../components/ImageLightbox.jsx'
 
 const POST_MAX_LENGTH = 280
 const IMAGE_MAX_COUNT = 4
@@ -23,10 +24,30 @@ const TABS = [
   { key: 'chat', label: 'チャット' },
 ]
 
+function isNewDay(previous, current) {
+  if (!previous) return true
+  return new Date(previous.createdAt).toDateString() !== new Date(current.createdAt).toDateString()
+}
+
+function PostsSkeleton({ count = 3 }) {
+  return (
+    <ul className="post-list">
+      {Array.from({ length: count }, (_, index) => (
+        <li key={index} className="post" aria-hidden="true">
+          <div className="skeleton skeleton-line is-short" />
+          <div className="skeleton skeleton-line" />
+          <div className="skeleton skeleton-line is-medium" />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function OfficialPostsTab({ eventId }) {
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [zoomedImage, setZoomedImage] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -49,26 +70,37 @@ function OfficialPostsTab({ eventId }) {
     }
   }, [eventId])
 
-  if (loading) return <p>読み込み中...</p>
+  if (loading) return <PostsSkeleton />
   if (error) return <p role="alert">{error}</p>
-  if (posts.length === 0) return <p>公式からの投稿はまだありません。</p>
+  if (posts.length === 0) return <p className="empty-state">公式からの投稿はまだありません。</p>
 
   return (
-    <ul>
-      {posts.map((post) => (
-        <li key={post.id}>
-          <p>{post.body}</p>
-          {post.imageUrls.length > 0 && (
-            <div>
-              {post.imageUrls.map((url) => (
-                <img key={url} src={url} alt="" style={{ maxWidth: 200 }} />
-              ))}
-            </div>
-          )}
-          <small>{formatDateTime(post.createdAt)}</small>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="post-list">
+        {posts.map((post) => (
+          <li key={post.id} className="post is-official">
+            <span className="badge-official">公式</span>
+            <p className="post-body">{post.body}</p>
+            {post.imageUrls.length > 0 && (
+              <div className="post-images" data-count={Math.min(post.imageUrls.length, 4)}>
+                {post.imageUrls.map((url) => (
+                  <button
+                    key={url}
+                    type="button"
+                    className="image-zoom-btn"
+                    onClick={() => setZoomedImage(url)}
+                  >
+                    <img src={url} alt="" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="post-meta">{formatDateTime(post.createdAt)}</div>
+          </li>
+        ))}
+      </ul>
+      {zoomedImage && <ImageLightbox src={zoomedImage} onClose={() => setZoomedImage(null)} />}
+    </>
   )
 }
 
@@ -87,8 +119,17 @@ function UserPostsTab({ eventId }) {
   const [reactionPending, setReactionPending] = useState(() => new Set())
   const [deletingPostId, setDeletingPostId] = useState(null)
   const [actionError, setActionError] = useState(null)
+  const [zoomedImage, setZoomedImage] = useState(null)
   const requestRef = useRef(0)
   const fileInputRef = useRef(null)
+
+  const [previews, setPreviews] = useState([])
+  useEffect(() => {
+    // object URLは明示的に解放しないとメモリに残り続ける
+    const urls = files.map((file) => URL.createObjectURL(file))
+    setPreviews(urls)
+    return () => urls.forEach(URL.revokeObjectURL)
+  }, [files])
 
   function fetchFirstPage() {
     const requestId = ++requestRef.current
@@ -249,80 +290,116 @@ function UserPostsTab({ eventId }) {
 
   return (
     <div>
-      <form onSubmit={handleSubmit}>
+      <form className="post-form" onSubmit={handleSubmit}>
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={POST_MAX_LENGTH}
           rows={3}
-          placeholder="投稿する"
+          placeholder="このイベントについて投稿する"
         />
-        <div>
-          {draft.length} / {POST_MAX_LENGTH}
-        </div>
 
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept={ALLOWED_IMAGE_TYPES.join(',')}
-          multiple
-          onChange={handleFileChange}
-          disabled={submitting}
-        />
+        <div className="file-picker">
+          <input
+            id="post-images"
+            type="file"
+            ref={fileInputRef}
+            accept={ALLOWED_IMAGE_TYPES.join(',')}
+            multiple
+            onChange={handleFileChange}
+            disabled={submitting}
+          />
+          <label className="file-picker-label" htmlFor="post-images">
+            画像を選ぶ(最大{IMAGE_MAX_COUNT}枚)
+          </label>
+        </div>
         {files.length > 0 && (
-          <ul>
+          <ul className="file-previews">
+            {/* previewsはeffectで作られるため、filesが減った直後の描画では追いつかないことがある */}
             {files.map((file, index) => (
-              <li key={index}>{file.name}</li>
+              <li key={`${file.name}-${index}`}>
+                {previews[index] && <img src={previews[index]} alt={file.name} />}
+              </li>
             ))}
           </ul>
         )}
 
         {submitError && <p role="alert">{submitError}</p>}
-        <button type="submit" disabled={submitting || draft.trim().length === 0}>
-          {submitting ? '投稿中...' : '投稿する'}
-        </button>
+        <div className="form-row">
+          <span className="char-count">
+            {draft.length} / {POST_MAX_LENGTH}
+          </span>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={submitting || draft.trim().length === 0}
+          >
+            {submitting ? '投稿中...' : '投稿する'}
+          </button>
+        </div>
       </form>
 
-      <div>
-        <button type="button" aria-pressed={sort === 'reactions'} onClick={() => setSort('reactions')}>
+      <div className="sort-row">
+        <button
+          type="button"
+          className="sort-btn"
+          aria-pressed={sort === 'reactions'}
+          onClick={() => setSort('reactions')}
+        >
           いいね数順
         </button>
-        <button type="button" aria-pressed={sort === 'latest'} onClick={() => setSort('latest')}>
+        <button
+          type="button"
+          className="sort-btn"
+          aria-pressed={sort === 'latest'}
+          onClick={() => setSort('latest')}
+        >
           最新順
         </button>
       </div>
 
-      {loading && <p>読み込み中...</p>}
+      {loading && <PostsSkeleton />}
       {error && <p role="alert">{error}</p>}
       {actionError && <p role="alert">{actionError}</p>}
-      {!loading && !error && posts.length === 0 && <p>投稿はまだありません。</p>}
+      {!loading && !error && posts.length === 0 && (
+        <p className="empty-state">投稿はまだありません。</p>
+      )}
 
       {posts.length > 0 && (
-        <ul>
+        <ul className="post-list">
           {posts.map((post) => (
-            <li key={post.id}>
-              <p>{post.authorDisplayName}</p>
-              <p>{post.body}</p>
+            <li key={post.id} className="post">
+              <p className="post-author">{post.authorDisplayName}</p>
+              <p className="post-body">{post.body}</p>
               {post.imageUrls.length > 0 && (
-                <div>
+                <div className="post-images" data-count={Math.min(post.imageUrls.length, 4)}>
                   {post.imageUrls.map((url) => (
-                    <img key={url} src={url} alt="" style={{ maxWidth: 200 }} />
+                    <button
+                      key={url}
+                      type="button"
+                      className="image-zoom-btn"
+                      onClick={() => setZoomedImage(url)}
+                    >
+                      <img src={url} alt="" />
+                    </button>
                   ))}
                 </div>
               )}
-              <div>
+              <div className="post-meta">
                 <button
                   type="button"
+                  className="like-btn"
                   aria-pressed={post.reactedByMe}
                   disabled={reactionPending.has(post.id)}
                   onClick={() => toggleReaction(post)}
                 >
                   {post.reactedByMe ? '♥' : '♡'} {post.reactionCount}
                 </button>
-                <small>{formatDateTime(post.createdAt)}</small>
+                <span>{formatDateTime(post.createdAt)}</span>
                 {post.isMine && (
                   <button
                     type="button"
+                    className="link-btn"
                     disabled={deletingPostId === post.id}
                     onClick={() => handleDeletePost(post.id)}
                   >
@@ -336,10 +413,19 @@ function UserPostsTab({ eventId }) {
       )}
 
       {nextCursor && (
-        <button type="button" onClick={loadMore} disabled={loadingMore}>
-          {loadingMore ? '読み込み中...' : 'もっと見る'}
-        </button>
+        <div className="form-row">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={loadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? '読み込み中...' : 'もっと見る'}
+          </button>
+        </div>
       )}
+
+      {zoomedImage && <ImageLightbox src={zoomedImage} onClose={() => setZoomedImage(null)} />}
     </div>
   )
 }
@@ -489,34 +575,49 @@ function ChatTab({ eventId }) {
 
   return (
     <div>
-      {loading && <p>読み込み中...</p>}
+      {loading && <PostsSkeleton count={4} />}
       {error && <p role="alert">{error}</p>}
-      {!loading && !error && messages.length === 0 && <p>まだ発言はありません。</p>}
+      {!loading && !error && messages.length === 0 && (
+        <p className="empty-state">まだ発言はありません。</p>
+      )}
 
       {messages.length > 0 && (
         <ul
+          className="chat-list"
           ref={listRef}
           onScroll={handleListScroll}
           style={{ maxHeight: CHAT_LIST_MAX_HEIGHT_PX, overflowY: 'auto' }}
         >
-          {messages.map((message) => (
-            <li key={message.id}>
-              <p>
-                {message.authorDisplayName}
-                <small> {formatDateTime(message.createdAt)}</small>
-              </p>
-              <p>{message.body}</p>
-              {message.isMine && (
-                <button type="button" onClick={() => handleDelete(message.id)}>
-                  削除
-                </button>
+          {messages.map((message, index) => (
+            <Fragment key={message.id}>
+              {isNewDay(messages[index - 1], message) && (
+                <li className="chat-date-separator">{formatDate(message.createdAt)}</li>
               )}
-            </li>
+              <li className={message.isMine ? 'chat-row is-mine' : 'chat-row'}>
+                <div className="chat-bubble">
+                  <div className="chat-head">
+                    <span className="chat-author">{message.authorDisplayName}</span>
+                    <span>{formatTime(message.createdAt)}</span>
+                    {message.isMine && (
+                      <button
+                        type="button"
+                        className="link-btn"
+                        onClick={() => handleDelete(message.id)}
+                      >
+                        削除
+                      </button>
+                    )}
+                  </div>
+                  <p className="chat-body">{message.body}</p>
+                </div>
+              </li>
+            </Fragment>
           ))}
         </ul>
       )}
 
-      <form onSubmit={handleSend}>
+      {actionError && <p role="alert">{actionError}</p>}
+      <form className="chat-form" onSubmit={handleSend}>
         <input
           type="text"
           value={draft}
@@ -525,8 +626,11 @@ function ChatTab({ eventId }) {
           placeholder="メッセージを入力"
           disabled={sending}
         />
-        {actionError && <p role="alert">{actionError}</p>}
-        <button type="submit" disabled={sending || draft.trim().length === 0}>
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={sending || draft.trim().length === 0}
+        >
           {sending ? '送信中...' : '送信'}
         </button>
       </form>
@@ -561,20 +665,21 @@ function EventDetail() {
 
   return (
     <main>
-      <header>
+      <header className="card event-header">
         <h1>{event.title}</h1>
-        <p>
+        <p className="event-artist">
           <ArtistThumbnail artist={event.artist} size={56} />
         </p>
         <p>{formatDateTime(event.startsAt)}</p>
         <p>{event.venue}</p>
       </header>
 
-      <nav>
+      <nav className="tabs">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
+            className="tab"
             aria-pressed={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
           >
@@ -583,9 +688,11 @@ function EventDetail() {
         ))}
       </nav>
 
-      {activeTab === 'official' && <OfficialPostsTab eventId={eventId} />}
-      {activeTab === 'user' && <UserPostsTab eventId={eventId} />}
-      {activeTab === 'chat' && <ChatTab eventId={eventId} />}
+      <div className="tab-panel">
+        {activeTab === 'official' && <OfficialPostsTab eventId={eventId} />}
+        {activeTab === 'user' && <UserPostsTab eventId={eventId} />}
+        {activeTab === 'chat' && <ChatTab eventId={eventId} />}
+      </div>
     </main>
   )
 }
