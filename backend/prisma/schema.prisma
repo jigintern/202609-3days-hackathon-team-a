@@ -82,9 +82,10 @@ model Artist {
   imageUrl    String?
   createdAt   DateTime @default(now())
 
-  events   Event[]
-  follows  Follow[]
-  oshiedBy User[]  @relation("OshiArtist")
+  events        Event[]
+  follows       Follow[]
+  oshiedBy      User[]         @relation("OshiArtist")
+  eventRequests EventRequest[]
 }
 
 model Follow {
@@ -170,6 +171,8 @@ model ChatMessage {
 model EventRequest {
   id         String        @id @default(uuid())
   userId     String
+  /// 一覧から選ばれた場合のみ入る。「その他」で自由入力された場合はnull
+  artistId   String?
   artistName String
   title      String
   venue      String?
@@ -178,7 +181,8 @@ model EventRequest {
   status     RequestStatus @default(pending)
   createdAt  DateTime      @default(now())
 
-  user User @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  artist Artist? @relation(fields: [artistId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
 }

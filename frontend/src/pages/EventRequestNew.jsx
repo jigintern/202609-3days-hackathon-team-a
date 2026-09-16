@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createEventRequest, listMyEventRequests } from '../api/eventRequests.js'
+import { getArtists } from '../api/artists.js'
 import { useFetch } from '../hooks/useFetch.js'
 import { useAsyncAction } from '../hooks/useAsyncAction.js'
 import { formatDateTime } from '../lib/formatDate.js'
@@ -10,7 +11,17 @@ const STATUS_LABELS = {
   rejected: '却下',
 }
 
-const EMPTY_FORM = { artistName: '', title: '', venue: '', startsAt: '', note: '' }
+// プルダウンで「その他」を選んだときだけ自由入力を使う
+const OTHER = 'other'
+
+const EMPTY_FORM = {
+  artistId: '',
+  artistName: '',
+  title: '',
+  venue: '',
+  startsAt: '',
+  note: '',
+}
 
 function EventRequestNew() {
   const [form, setForm] = useState(EMPTY_FORM)
@@ -20,13 +31,24 @@ function EventRequestNew() {
   const { data, loading, error } = useFetch(listMyEventRequests, [reloadKey])
   const requests = data?.eventRequests ?? []
 
+  const { data: artistData, error: artistError } = useFetch(getArtists, [])
+  const artists = artistData?.artists ?? []
+
+  // 同名のアーティストが登録され得るため、選択値には名前ではなくIDを使う
+  const selectedArtistName =
+    form.artistId === OTHER
+      ? form.artistName.trim()
+      : (artists.find((artist) => artist.id === form.artistId)?.name ?? '')
+
   const {
     run: submit,
     pending: submitting,
     error: submitError,
   } = useAsyncAction(async () => {
     await createEventRequest({
-      artistName: form.artistName.trim(),
+      // 一覧から選んだ場合はIDも送り、どのアーティストかDBに残す
+      artistId: form.artistId === OTHER ? undefined : form.artistId,
+      artistName: selectedArtistName,
       title: form.title.trim(),
       venue: form.venue.trim() || undefined,
       // datetime-localはタイムゾーンを持たないため、ISO形式に直してから送る
@@ -48,7 +70,7 @@ function EventRequestNew() {
     submit()
   }
 
-  const canSubmit = form.artistName.trim() && form.title.trim() && !submitting
+  const canSubmit = selectedArtistName && form.title.trim() && !submitting
 
   return (
     <main>
@@ -60,15 +82,39 @@ function EventRequestNew() {
       <section className="card form-card">
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="artistName">アーティスト名(必須)</label>
-            <input
-              id="artistName"
-              value={form.artistName}
-              onChange={(e) => updateField('artistName', e.target.value)}
-              maxLength={100}
+            <label htmlFor="artistId">アーティスト(必須)</label>
+            <select
+              id="artistId"
+              value={form.artistId}
+              onChange={(e) => updateField('artistId', e.target.value)}
               required
-            />
+            >
+              <option value="">選択してください</option>
+              {artists.map((artist) => (
+                <option key={artist.id} value={artist.id}>
+                  {artist.name}
+                </option>
+              ))}
+              <option value={OTHER}>その他(一覧にない)</option>
+            </select>
+            {artistError && (
+              <p role="alert">
+                アーティストの一覧を取得できませんでした。「その他」で名前を入力してください。
+              </p>
+            )}
           </div>
+          {form.artistId === OTHER && (
+            <div>
+              <label htmlFor="artistName">アーティスト名(必須)</label>
+              <input
+                id="artistName"
+                value={form.artistName}
+                onChange={(e) => updateField('artistName', e.target.value)}
+                maxLength={100}
+                required
+              />
+            </div>
+          )}
           <div>
             <label htmlFor="title">イベント名(必須)</label>
             <input
