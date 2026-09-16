@@ -116,12 +116,13 @@ function EventRequestNew() {
               required
             >
               <option value="">選択してください</option>
+              {/* 一覧が長くなると下端まで探しに行くことになるため、先頭に置く */}
+              <option value={OTHER}>その他(一覧にない)</option>
               {visibleArtists.map((artist) => (
                 <option key={artist.id} value={artist.id}>
                   {artist.name}
                 </option>
               ))}
-              <option value={OTHER}>その他(一覧にない)</option>
             </select>
             {query && matched.length === 0 && (
               <p className="muted">

@@ -51,11 +51,69 @@ adminEventRequestsRouter.patch(
     const existing = await prisma.eventRequest.findUnique({ where: { id: req.params.requestId } });
     if (!existing) throw Errors.notFound("申請が見つかりません");
 
-    const request = await prisma.eventRequest.update({
-      where: { id: req.params.requestId },
-      data: { status: parsed.data.status },
+    // 却下する場合と、既に承認済みのものを触る場合は状態を変えるだけ。
+    // 承認済みを再度承認してもイベントが二重に作られないようにしている。
+    if (parsed.data.status !== "approved" || existing.status === "approved") {
+      const request = await prisma.eventRequest.update({
+        where: { id: existing.id },
+        data: { status: parsed.data.status },
+      });
+      return res.json({ eventRequest: request });
+    }
+
+    // Eventは会場と開催日時が必須。申請では任意入力のため、欠けていると自動では作れない。
+    // ここで弾くと申請がpendingのまま詰まるので、状態だけ承認にして運営に知らせる。
+    if (!existing.venue || !existing.startsAt) {
+      const request = await prisma.eventRequest.update({
+        where: { id: existing.id },
+        data: { status: "approved" },
+      });
+      return res.json({ eventRequest: request, event: null });
+    }
+
+    const { request, event } = await prisma.$transaction(async (tx) => {
+      // 二人の運営が同時に承認してもイベントが二重に作られないよう、
+      // 「まだ承認されていない」ことを条件に状態を先に取りに行く
+      const claimed = await tx.eventRequest.updateMany({
+        where: { id: existing.id, status: { not: "approved" } },
+        data: { status: "approved" },
+      });
+      if (claimed.count === 0) {
+        const current = await tx.eventRequest.findUnique({ where: { id: existing.id } });
+        return { request: current, event: null };
+      }
+
+      let artistId = existing.artistId;
+
+      // 「その他」で自由入力された場合はアーティストも作る。同名が既にいればそれを使う。
+      // 同名が複数いる場合に毎回同じ相手を選ぶよう、古い順で確定させる。
+      if (!artistId) {
+        const found = await tx.artist.findFirst({
+          where: { name: existing.artistName },
+          orderBy: { createdAt: "asc" },
+        });
+        artistId = found
+          ? found.id
+          : (await tx.artist.create({ data: { name: existing.artistName } })).id;
+      }
+
+      const created = await tx.event.create({
+        data: {
+          artistId,
+          title: existing.title,
+          venue: existing.venue,
+          startsAt: existing.startsAt,
+        },
+      });
+
+      const updated = await tx.eventRequest.update({
+        where: { id: existing.id },
+        data: { artistId },
+      });
+
+      return { request: updated, event: created };
     });
 
-    res.json({ eventRequest: request });
+    res.json({ eventRequest: request, event });
   })
 );
