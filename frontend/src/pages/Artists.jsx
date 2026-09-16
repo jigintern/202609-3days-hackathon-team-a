@@ -12,7 +12,15 @@ function Artists() {
   const { search, setSearch, filtered: filteredArtists } = useSearchFilter(artists, getArtistFields)
 
   function handleFollowChange(artistId, isFollowing) {
-    setArtists((prev) => prev.map((a) => (a.id === artistId ? { ...a, isFollowing } : a)))
+    setArtists((prev) =>
+      prev.map((a) =>
+        a.id === artistId ? { ...a, isFollowing, isOshi: isFollowing && a.isOshi } : a
+      )
+    )
+  }
+
+  function handleOshiChange(artistId, isOshi) {
+    setArtists((prev) => prev.map((a) => ({ ...a, isOshi: a.id === artistId ? isOshi : false })))
   }
 
   if (error) return <p role="alert">{error}</p>
@@ -38,7 +46,12 @@ function Artists() {
       ) : (
         <ul className="grid">
           {filteredArtists.map((artist) => (
-            <ArtistListItem key={artist.id} artist={artist} onFollowChange={handleFollowChange} />
+            <ArtistListItem
+              key={artist.id}
+              artist={artist}
+              onFollowChange={handleFollowChange}
+              onOshiChange={handleOshiChange}
+            />
           ))}
         </ul>
       )}
