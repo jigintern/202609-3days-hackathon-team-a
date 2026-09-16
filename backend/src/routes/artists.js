@@ -5,7 +5,7 @@ import { Errors } from "../utils/errors.js";
 
 export const artistsRouter = Router();
 
-function serializeArtist(artist, isFollowing) {
+function serializeArtist(artist, isFollowing, isOshi) {
   return {
     id: artist.id,
     name: artist.name,
@@ -13,6 +13,7 @@ function serializeArtist(artist, isFollowing) {
     description: artist.description,
     imageUrl: artist.imageUrl,
     isFollowing,
+    isOshi,
   };
 }
 
@@ -38,7 +39,9 @@ artistsRouter.get(
     const followedIds = new Set(follows.map((f) => f.artistId));
 
     res.json({
-      artists: artists.map((artist) => serializeArtist(artist, followedIds.has(artist.id))),
+      artists: artists.map((artist) =>
+        serializeArtist(artist, followedIds.has(artist.id), artist.id === req.user.oshiArtistId)
+      ),
     });
   })
 );
@@ -53,7 +56,7 @@ artistsRouter.get(
       where: { userId_artistId: { userId: req.user.id, artistId: artist.id } },
     });
 
-    res.json({ artist: serializeArtist(artist, Boolean(follow)) });
+    res.json({ artist: serializeArtist(artist, Boolean(follow), artist.id === req.user.oshiArtistId) });
   })
 );
 
@@ -94,11 +97,48 @@ artistsRouter.post(
   })
 );
 
+artistsRouter.post(
+  "/:artistId/oshi",
+  asyncHandler(async (req, res) => {
+    const artist = await prisma.artist.findUnique({ where: { id: req.params.artistId } });
+    if (!artist) throw Errors.notFound("アーティストが見つかりません");
+
+    const follow = await prisma.follow.findUnique({
+      where: { userId_artistId: { userId: req.user.id, artistId: artist.id } },
+    });
+    if (!follow) throw Errors.validation("フォロー中のアーティストのみ最推しに設定できます");
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { oshiArtistId: artist.id },
+    });
+
+    res.status(204).end();
+  })
+);
+
+artistsRouter.delete(
+  "/:artistId/oshi",
+  asyncHandler(async (req, res) => {
+    await prisma.user.updateMany({
+      where: { id: req.user.id, oshiArtistId: req.params.artistId },
+      data: { oshiArtistId: null },
+    });
+
+    res.status(204).end();
+  })
+);
+
 artistsRouter.delete(
   "/:artistId/follow",
   asyncHandler(async (req, res) => {
     await prisma.follow.deleteMany({
       where: { userId: req.user.id, artistId: req.params.artistId },
+    });
+
+    await prisma.user.updateMany({
+      where: { id: req.user.id, oshiArtistId: req.params.artistId },
+      data: { oshiArtistId: null },
     });
 
     res.status(204).end();
