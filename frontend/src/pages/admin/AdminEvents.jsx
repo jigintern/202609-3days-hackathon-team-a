@@ -8,12 +8,9 @@ import {
 } from '../../api/admin.js'
 import { useFetch } from '../../hooks/useFetch.js'
 import { useAsyncAction } from '../../hooks/useAsyncAction.js'
+import { formatDateTime } from '../../lib/formatDate.js'
 
 const EMPTY = { artistId: '', title: '', venue: '', prefecture: '', startsAt: '' }
-
-function formatDateTime(value) {
-  return new Date(value).toLocaleString('ja-JP')
-}
 
 // datetime-local は "YYYY-MM-DDTHH:mm" 形式。フォームに戻すためローカル時刻へ変換する
 function toInputValue(iso) {

@@ -7,10 +7,7 @@ import {
 } from '../../api/admin.js'
 import { useFetch } from '../../hooks/useFetch.js'
 import { useAsyncAction } from '../../hooks/useAsyncAction.js'
-
-function formatDateTime(value) {
-  return new Date(value).toLocaleString('ja-JP')
-}
+import { formatDateTime } from '../../lib/formatDate.js'
 
 function AdminPosts() {
   const [tab, setTab] = useState('posts')
