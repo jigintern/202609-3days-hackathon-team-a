@@ -93,15 +93,15 @@ function Vault() {
   }
 
   return (
-    <main>
+    <main className="vault-page">
       <p>
         <Link to="/">ホームに戻る</Link>
       </p>
       <h1>パスワード管理</h1>
 
-      <div>
-        <Link to="/vault/new">新しく登録する</Link>
-        <button type="button" onClick={handleLock}>
+      <div className="vault-toolbar">
+        <Link className="btn-primary" to="/vault/new">新しく登録する</Link>
+        <button className="btn-secondary" type="button" onClick={handleLock}>
           ロックする
         </button>
       </div>
@@ -111,9 +111,9 @@ function Vault() {
       {!loading && !error && entries.length === 0 && <p>登録された認証情報はありません。</p>}
 
       {entries.length > 0 && (
-        <ul>
+        <ul className="grid vault-list">
           {entries.map(({ id, data }) => (
-            <li key={id}>
+            <li className="card vault-card" key={id}>
               {data === null ? (
                 <p role="alert">この項目は復号できませんでした。</p>
               ) : (
@@ -128,24 +128,24 @@ function Vault() {
                   )}
                   <p>
                     {CREDENTIAL_LABELS[data.credentialType] ?? data.credentialType}: {data.credentialValue}
-                    <button type="button" onClick={() => copyToClipboard(data.credentialValue)}>
+                    <button className="btn-secondary" type="button" onClick={() => copyToClipboard(data.credentialValue)}>
                       コピー
                     </button>
                   </p>
                   <p>
                     パスワード: {revealed.has(id) ? data.password : '••••••••'}
-                    <button type="button" onClick={() => toggleReveal(id)}>
+                    <button className="btn-secondary" type="button" onClick={() => toggleReveal(id)}>
                       {revealed.has(id) ? '隠す' : '表示'}
                     </button>
-                    <button type="button" onClick={() => copyToClipboard(data.password)}>
+                    <button className="btn-secondary" type="button" onClick={() => copyToClipboard(data.password)}>
                       コピー
                     </button>
                   </p>
                   {data.note && <p>{data.note}</p>}
-                  <Link to={`/vault/${id}/edit`}>編集</Link>
+                  <Link className="btn-secondary" to={`/vault/${id}/edit`}>編集</Link>
                 </>
               )}
-              <button type="button" onClick={() => handleDelete(id)} disabled={deletingId === id}>
+              <button className="btn-secondary" type="button" onClick={() => handleDelete(id)} disabled={deletingId === id}>
                 {deletingId === id ? '削除中...' : '削除'}
               </button>
             </li>

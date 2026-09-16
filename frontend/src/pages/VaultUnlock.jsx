@@ -109,7 +109,7 @@ function VaultUnlock() {
   if (loading) return <p>読み込み中...</p>
 
   return (
-    <main>
+    <main className="card auth-page vault-form">
       <p>
         <Link to="/">ホームに戻る</Link>
       </p>
@@ -118,7 +118,7 @@ function VaultUnlock() {
       {error && <p role="alert">{error}</p>}
 
       {!profile && !needsSetup && (
-        <button type="button" onClick={loadProfile}>
+        <button className="btn-secondary" type="button" onClick={loadProfile}>
           再読み込み
         </button>
       )}
@@ -126,7 +126,7 @@ function VaultUnlock() {
       {profile ? (
         <form onSubmit={handleUnlock}>
           <p>マスターパスワードを入力してください。</p>
-          <div>
+          <div className="vault-field">
             <label htmlFor="master">マスターパスワード</label>
             <input
               id="master"
@@ -137,7 +137,7 @@ function VaultUnlock() {
               required
             />
           </div>
-          <button type="submit" disabled={working || !password}>
+          <button className="btn-primary" type="submit" disabled={working || !password}>
             {working ? 'アンロック中...' : 'アンロック'}
           </button>
           <p>
@@ -146,7 +146,7 @@ function VaultUnlock() {
               そのため忘れた場合は保管庫を作り直すしかありません。
             </small>
           </p>
-          <button type="button" onClick={handleDestroy} disabled={working}>
+          <button className="btn-secondary" type="button" onClick={handleDestroy} disabled={working}>
             マスターパスワードを忘れた(保管庫を削除して作り直す)
           </button>
         </form>
@@ -159,7 +159,7 @@ function VaultUnlock() {
             </strong>
             アプリのログインパスワードとは別のものにしてください。
           </p>
-          <div>
+          <div className="vault-field">
             <label htmlFor="master">マスターパスワード</label>
             <input
               id="master"
@@ -170,7 +170,7 @@ function VaultUnlock() {
               required
             />
           </div>
-          <div>
+          <div className="vault-field">
             <label htmlFor="masterConfirm">マスターパスワード(確認)</label>
             <input
               id="masterConfirm"
@@ -181,7 +181,7 @@ function VaultUnlock() {
               required
             />
           </div>
-          <button type="submit" disabled={working || !password || !passwordConfirm}>
+          <button className="btn-primary" type="submit" disabled={working || !password || !passwordConfirm}>
             {working ? '作成中...' : '保管庫を作成'}
           </button>
         </form>

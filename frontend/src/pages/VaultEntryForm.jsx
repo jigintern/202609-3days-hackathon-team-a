@@ -100,7 +100,7 @@ function VaultEntryForm() {
 
   if (loadFailed) {
     return (
-      <main>
+      <main className="card auth-page vault-form">
         <p>
           <Link to="/vault">一覧に戻る</Link>
         </p>
@@ -113,7 +113,7 @@ function VaultEntryForm() {
     form.siteName.trim() && form.credentialValue.trim() && form.password && !saving
 
   return (
-    <main>
+    <main className="card auth-page vault-form">
       <p>
         <Link to="/vault">一覧に戻る</Link>
       </p>
@@ -125,7 +125,7 @@ function VaultEntryForm() {
       {error && <p role="alert">{error}</p>}
 
       <form onSubmit={handleSubmit}>
-        <div>
+        <div className="vault-field">
           <label htmlFor="siteName">サイト名(必須)</label>
           <input
             id="siteName"
@@ -135,7 +135,7 @@ function VaultEntryForm() {
             required
           />
         </div>
-        <div>
+        <div className="vault-field">
           <label htmlFor="siteUrl">サイトのURL</label>
           <input
             id="siteUrl"
@@ -146,23 +146,25 @@ function VaultEntryForm() {
           />
         </div>
 
-        <fieldset>
-          <legend>認証情報の種別</legend>
-          {Object.entries(CREDENTIAL_LABELS).map(([type, label]) => (
-            <label key={type}>
-              <input
-                type="radio"
-                name="credentialType"
-                value={type}
-                checked={form.credentialType === type}
-                onChange={(e) => updateField('credentialType', e.target.value)}
-              />
-              {label}
-            </label>
-          ))}
+        <fieldset className="vault-credential-types">
+          <legend className="vault-credential-legend">認証情報の種別</legend>
+          <div className="vault-radio-group">
+            {Object.entries(CREDENTIAL_LABELS).map(([type, label]) => (
+              <label className="vault-radio-option" key={type}>
+                <input
+                  type="radio"
+                  name="credentialType"
+                  value={type}
+                  checked={form.credentialType === type}
+                  onChange={(e) => updateField('credentialType', e.target.value)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
         </fieldset>
 
-        <div>
+        <div className="vault-field">
           <label htmlFor="credentialValue">
             {CREDENTIAL_LABELS[form.credentialType]}(必須)
           </label>
@@ -175,7 +177,7 @@ function VaultEntryForm() {
             required
           />
         </div>
-        <div>
+        <div className="vault-field">
           <label htmlFor="password">パスワード(必須)</label>
           <input
             id="password"
@@ -187,7 +189,7 @@ function VaultEntryForm() {
             required
           />
         </div>
-        <div>
+        <div className="vault-field">
           <label htmlFor="note">備考({form.note.length} / {NOTE_MAX_LENGTH})</label>
           <textarea
             id="note"
@@ -198,7 +200,7 @@ function VaultEntryForm() {
           />
         </div>
 
-        <button type="submit" disabled={!canSubmit}>
+        <button className="btn-primary" type="submit" disabled={!canSubmit}>
           {saving ? '保存中...' : '保存'}
         </button>
       </form>
