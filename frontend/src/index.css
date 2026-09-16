@@ -7,6 +7,8 @@
   --color-text-muted: #666666;
   --color-border: #e0e0e0;
   --color-danger: #d32f2f;
+  --color-oshi: #ff8c1a;
+  --color-oshi-bg: #ffe8cc;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --font-sans: 'Hiragino Sans', 'Yu Gothic', 'Segoe UI', system-ui, sans-serif;
@@ -101,11 +103,33 @@ label {
   cursor: not-allowed;
 }
 
+.btn-oshi {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--color-oshi);
+  color: #fff;
+  border: 1px solid var(--color-oshi);
+}
+
+.btn-oshi:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .card {
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1rem;
+}
+
+.is-oshi {
+  background: var(--color-oshi-bg);
 }
 
 .event-card {
@@ -194,7 +218,8 @@ label {
 }
 
 .artist-card .btn-primary,
-.artist-card .btn-secondary {
+.artist-card .btn-secondary,
+.artist-card .btn-oshi {
   text-align: center;
 }
 

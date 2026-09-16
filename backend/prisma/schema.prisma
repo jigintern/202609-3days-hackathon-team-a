@@ -26,12 +26,13 @@ enum RequestStatus {
 /// Supabase Auth のユーザーと1対1。id には auth 側のユーザーid（JWTの sub）をそのまま入れる。
 /// パスワードは Supabase Auth が持つため、ここには保存しない。
 model User {
-  id          String   @id
-  email       String   @unique
-  displayName String
-  role        Role     @default(user)
-  isSuspended Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id           String   @id
+  email        String   @unique
+  displayName  String
+  role         Role     @default(user)
+  isSuspended  Boolean  @default(false)
+  oshiArtistId String?
+  createdAt    DateTime @default(now())
 
   follows       Follow[]
   posts         Post[]
@@ -40,6 +41,7 @@ model User {
   eventRequests EventRequest[]
   vaultProfile  VaultProfile?
   vaultEntries  VaultEntry[]
+  oshiArtist    Artist?        @relation("OshiArtist", fields: [oshiArtistId], references: [id], onDelete: SetNull)
 }
 
 /// パスワード管理（SPEC_1.md 4.7 案B）の鍵導出パラメータ。
@@ -80,8 +82,9 @@ model Artist {
   imageUrl    String?
   createdAt   DateTime @default(now())
 
-  events  Event[]
-  follows Follow[]
+  events   Event[]
+  follows  Follow[]
+  oshiedBy User[]  @relation("OshiArtist")
 }
 
 model Follow {

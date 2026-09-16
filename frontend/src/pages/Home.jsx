@@ -47,7 +47,7 @@ function Home() {
       {events.length > 0 && (
         <ul className="grid">
           {events.map((event) => (
-            <li key={event.id} className="card event-card">
+            <li key={event.id} className={`card event-card${event.artist.isOshi ? ' is-oshi' : ''}`}>
               <Link to={`/events/${event.id}`}>
                 <p className="event-card-title">{event.title}</p>
                 <p>{event.artist.name}</p>

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getArtist, getArtistEvents } from '../api/artists.js'
 import { useFetch } from '../hooks/useFetch.js'
 import FollowButton from '../components/FollowButton.jsx'
+import OshiButton from '../components/OshiButton.jsx'
 import EventListItem from '../components/EventListItem.jsx'
 
 function ArtistDetail() {
@@ -34,8 +35,17 @@ function ArtistDetail() {
       <FollowButton
         artistId={artist.id}
         isFollowing={artist.isFollowing}
-        onChange={(isFollowing) => setArtist((prev) => ({ ...prev, isFollowing }))}
+        onChange={(isFollowing) =>
+          setArtist((prev) => ({ ...prev, isFollowing, isOshi: isFollowing && prev.isOshi }))
+        }
       />
+      {artist.isFollowing && (
+        <OshiButton
+          artistId={artist.id}
+          isOshi={artist.isOshi}
+          onOshiChange={(artistId, isOshi) => setArtist((prev) => ({ ...prev, isOshi }))}
+        />
+      )}
 
       <h2>イベント</h2>
       <div>
