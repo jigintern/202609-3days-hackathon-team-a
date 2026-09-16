@@ -3,12 +3,16 @@ import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
+import { normalizeOptional } from "../../utils/normalizeOptional.js";
+import { cursorDateSchema, decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
 
 export const adminArtistsRouter = Router();
 
 // z.string().url() は new URL() で検証するため javascript: なども通ってしまう。
-// 画面にそのまま出す値なので http/https に限定する。
-function isHttpUrl(value) {
+// 画面にそのまま出す値なので http/https に限定する（空文字は「消す」の意味で許可）。
+function isHttpUrlOrEmpty(value) {
+  if (value === "") return true;
+
   try {
     const { protocol } = new URL(value);
     return protocol === "http:" || protocol === "https:";
@@ -21,10 +25,59 @@ const artistSchema = z.object({
   name: z.string().trim().min(1).max(100),
   nameKana: z.string().trim().max(100).optional(),
   description: z.string().trim().max(1000).optional(),
-  imageUrl: z.string().refine(isHttpUrl, "imageUrlはhttp/httpsのURLを指定してください").optional(),
+  // 空文字は「値を消す」の意味で受け取る（管理画面で入力欄を空にしたとき）
+  imageUrl: z
+    .string()
+    .refine(isHttpUrlOrEmpty, "imageUrlはhttp/httpsのURLを指定してください")
+    .optional(),
 });
 
 const updateArtistSchema = artistSchema.partial();
+
+adminArtistsRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const limit = parseLimit(req.query.limit, { fallback: 50, max: 100 });
+    const cursor = decodeCursor(req.query.cursor, { createdAt: cursorDateSchema });
+
+    // 単に件数で打ち切ると上限を超えた分に管理画面から到達できなくなるため、
+    // (createdAt, id) の複合キーで続きを取れるようにする
+    const rows = await prisma.artist.findMany({
+      where: cursor
+        ? {
+            OR: [
+              { createdAt: { lt: new Date(cursor.createdAt) } },
+              { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+            ],
+          }
+        : {},
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      include: { _count: { select: { events: true, follows: true } } },
+    });
+
+    const hasMore = rows.length > limit;
+    const artists = hasMore ? rows.slice(0, limit) : rows;
+    const last = artists[artists.length - 1];
+
+    res.json({
+      nextCursor:
+        hasMore && last
+          ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
+          : null,
+      artists: artists.map((artist) => ({
+        id: artist.id,
+        name: artist.name,
+        nameKana: artist.nameKana,
+        description: artist.description,
+        imageUrl: artist.imageUrl,
+        eventCount: artist._count.events,
+        followerCount: artist._count.follows,
+        createdAt: artist.createdAt,
+      })),
+    });
+  })
+);
 
 adminArtistsRouter.post(
   "/",
@@ -34,7 +87,7 @@ adminArtistsRouter.post(
       throw Errors.validation(parsed.error.issues[0]?.message ?? "入力が不正です");
     }
 
-    const artist = await prisma.artist.create({ data: parsed.data });
+    const artist = await prisma.artist.create({ data: normalizeOptional(parsed.data) });
     res.status(201).json({ artist });
   })
 );
@@ -52,7 +105,7 @@ adminArtistsRouter.patch(
 
     const artist = await prisma.artist.update({
       where: { id: req.params.artistId },
-      data: parsed.data,
+      data: normalizeOptional(parsed.data),
     });
 
     res.json({ artist });

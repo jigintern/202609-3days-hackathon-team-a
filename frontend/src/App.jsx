@@ -8,6 +8,12 @@ import ArtistDetail from './pages/ArtistDetail.jsx'
 import EventDetail from './pages/EventDetail.jsx'
 import EventRequestNew from './pages/EventRequestNew.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import AdminRoute from './components/AdminRoute.jsx'
+import AdminUsers from './pages/admin/AdminUsers.jsx'
+import AdminArtists from './pages/admin/AdminArtists.jsx'
+import AdminEvents from './pages/admin/AdminEvents.jsx'
+import AdminPosts from './pages/admin/AdminPosts.jsx'
+import AdminEventRequests from './pages/admin/AdminEventRequests.jsx'
 
 function App() {
   return (
@@ -53,6 +59,46 @@ function App() {
           <ProtectedRoute>
             <EventRequestNew />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <AdminRoute>
+            <AdminUsers />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/artists"
+        element={
+          <AdminRoute>
+            <AdminArtists />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/events"
+        element={
+          <AdminRoute>
+            <AdminEvents />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/posts"
+        element={
+          <AdminRoute>
+            <AdminPosts />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/admin/event-requests"
+        element={
+          <AdminRoute>
+            <AdminEventRequests />
+          </AdminRoute>
         }
       />
     </Routes>

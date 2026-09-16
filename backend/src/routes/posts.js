@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Errors } from "../utils/errors.js";
-import { decodeCursor, paginateByKey, parseLimit } from "../utils/pagination.js";
+import { cursorDateSchema, decodeCursor, paginateByKey, parseLimit } from "../utils/pagination.js";
 import { assertCooldownElapsed } from "../utils/cooldown.js";
 import { isUploadedImageUrl } from "../lib/supabaseStorage.js";
 import { env } from "../lib/env.js";
@@ -25,8 +25,9 @@ const createPostSchema = z.object({
 
 // 並び順のキー。カーソルにこれを入れることで、ページ取得の合間に投稿が
 // 増減しても境界がずれない（降順なので比較結果は反転させる）
-function buildSortKey(post, { snapshotAt, reactionCount }) {
+function buildSortKey(post, { snapshotAt, reactionCount, sort }) {
   return {
+    sort,
     snapshotAt: snapshotAt.toISOString(),
     reactionCount,
     createdAt: post.createdAt.toISOString(),
@@ -42,14 +43,19 @@ function compareSortKeys(a, b) {
   return a.id < b.id ? 1 : -1;
 }
 
-function readCursor(raw) {
-  const cursor = decodeCursor(raw);
+function readCursor(raw, sort) {
+  const cursor = decodeCursor(raw, {
+    snapshotAt: cursorDateSchema,
+    createdAt: cursorDateSchema,
+    reactionCount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    sort: z.literal(sort),
+  });
   if (!cursor) return null;
+  if (sort === "latest" && cursor.reactionCount !== 0) {
+    throw Errors.validation("カーソルの形式が不正です");
+  }
 
-  const snapshotAt = new Date(cursor.snapshotAt);
-  if (Number.isNaN(snapshotAt.getTime())) return null;
-
-  return { ...cursor, snapshotAt };
+  return { ...cursor, snapshotAt: new Date(cursor.snapshotAt) };
 }
 
 function serializePost(post, viewerId) {
@@ -95,7 +101,7 @@ eventPostsRouter.get(
     // いいね順は順位の基準そのものが動くため、都度並べ直すと順位が上がった投稿が
     // カーソルを追い越し、一度も表示されないまま飛ばされる。そこで最初のページを
     // 取得した時刻をカーソルに持たせ、ページ送りの間はその時点のいいね数で順位を決める。
-    const cursor = readCursor(req.query.cursor);
+    const cursor = readCursor(req.query.cursor, sort);
     const snapshotAt = cursor?.snapshotAt ?? new Date();
 
     const posts = await prisma.post.findMany({
@@ -129,6 +135,7 @@ eventPostsRouter.get(
         value: post,
         key: buildSortKey(post, {
           snapshotAt,
+          sort,
           reactionCount: sort === "reactions" ? snapshotCountByPostId.get(post.id) ?? 0 : 0,
         }),
       }))

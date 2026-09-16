@@ -37,6 +37,12 @@ adminUsersRouter.patch(
       throw Errors.validation(parsed.error.issues[0]?.message ?? "入力が不正です");
     }
 
+    // 自分を停止すると requireProfile で弾かれ、解除するAPIも呼べなくなる。
+    // DBを直接書き換える以外に復旧手段が無くなるため、サーバー側で禁止する。
+    if (req.params.userId === req.user.id && parsed.data.isSuspended) {
+      throw Errors.validation("自分自身を利用停止にはできません");
+    }
+
     const existing = await prisma.user.findUnique({ where: { id: req.params.userId } });
     if (!existing) throw Errors.notFound("ユーザーが見つかりません");
 

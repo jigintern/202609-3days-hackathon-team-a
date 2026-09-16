@@ -7,6 +7,8 @@ export function useAsyncAction(action) {
   const activeRef = useRef(true)
 
   useEffect(() => {
+    activeRef.current = true // StrictModeの再実行で false のまま戻らないようにする
+
     return () => {
       activeRef.current = false
     }
