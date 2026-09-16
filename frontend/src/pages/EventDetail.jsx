@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getEvent } from '../api/events.js'
+import { getConfig } from '../api/config.js'
 import ArtistThumbnail from '../components/ArtistThumbnail.jsx'
 import { listPosts, createPost, deletePost, addReaction, removeReaction } from '../api/posts.js'
 import { listMessages, createMessage, deleteMessage } from '../api/messages.js'
 import { uploadImages } from '../api/uploads.js'
+import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 import { formatDate, formatDateTime, formatTime } from '../lib/formatDate.js'
 import ImageLightbox from '../components/ImageLightbox.jsx'
@@ -15,6 +17,7 @@ const IMAGE_MAX_SIZE_MB = 5
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHAT_MAX_LENGTH = 500
 const CHAT_POLL_INTERVAL_MS = 3000
+const DEFAULT_COOLDOWN = { post: 30, chat: 3 }
 const CHAT_LIST_MAX_HEIGHT_PX = 320
 const SCROLL_BOTTOM_THRESHOLD_PX = 40
 
@@ -23,6 +26,35 @@ const TABS = [
   { key: 'user', label: 'ユーザー' },
   { key: 'chat', label: 'チャット' },
 ]
+
+// クールダウンはサーバーがユーザー単位で管理している。タブを切り替えるとコンポーネントが
+// 作り直されるため、期限をモジュールスコープに置いて表示が途切れないようにする
+const cooldownUntil = { post: 0, chat: 0 }
+let cooldownOwnerId = null
+
+function remainingSeconds(until) {
+  return Math.max(0, Math.ceil((until - Date.now()) / 1000))
+}
+
+// 残り秒数を表示し、0になるまで送信させない(SPEC 4.5)
+function useCooldown(kind) {
+  const [seconds, setSeconds] = useState(() => remainingSeconds(cooldownUntil[kind]))
+
+  useEffect(() => {
+    if (seconds <= 0) return
+    const timerId = setTimeout(() => setSeconds(remainingSeconds(cooldownUntil[kind])), 1000)
+    return () => clearTimeout(timerId)
+  }, [seconds, kind])
+
+  function start(waitSeconds) {
+    if (!waitSeconds || waitSeconds <= 0) return
+    const wait = Math.ceil(waitSeconds)
+    cooldownUntil[kind] = Date.now() + wait * 1000
+    setSeconds(wait)
+  }
+
+  return { seconds, start }
+}
 
 function isNewDay(previous, current) {
   if (!previous) return true
@@ -104,7 +136,7 @@ function OfficialPostsTab({ eventId }) {
   )
 }
 
-function UserPostsTab({ eventId }) {
+function UserPostsTab({ eventId, cooldownSeconds }) {
   const [posts, setPosts] = useState([])
   const [sort, setSort] = useState('reactions')
   const [nextCursor, setNextCursor] = useState(null)
@@ -120,6 +152,7 @@ function UserPostsTab({ eventId }) {
   const [deletingPostId, setDeletingPostId] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [zoomedImage, setZoomedImage] = useState(null)
+  const cooldown = useCooldown('post')
   const requestRef = useRef(0)
   const fileInputRef = useRef(null)
 
@@ -192,7 +225,7 @@ function UserPostsTab({ eventId }) {
   async function handleSubmit(e) {
     e.preventDefault()
     const trimmed = draft.trim()
-    if (!trimmed) return
+    if (!trimmed || cooldown.seconds > 0) return
 
     setSubmitting(true)
     setSubmitError(null)
@@ -206,9 +239,11 @@ function UserPostsTab({ eventId }) {
       await createPost(eventId, { body: trimmed, imageUrls: imageUrls ?? undefined })
       setDraft('')
       clearFiles()
+      cooldown.start(cooldownSeconds)
       fetchFirstPage()
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : '投稿に失敗しました')
+      cooldown.start(err instanceof ApiError ? err.retryAfter : 0)
     } finally {
       setSubmitting(false)
     }
@@ -332,9 +367,13 @@ function UserPostsTab({ eventId }) {
           <button
             type="submit"
             className="btn-primary"
-            disabled={submitting || draft.trim().length === 0}
+            disabled={submitting || cooldown.seconds > 0 || draft.trim().length === 0}
           >
-            {submitting ? '投稿中...' : '投稿する'}
+            {cooldown.seconds > 0
+              ? `あと${cooldown.seconds}秒`
+              : submitting
+                ? '投稿中...'
+                : '投稿する'}
           </button>
         </div>
       </form>
@@ -430,13 +469,14 @@ function UserPostsTab({ eventId }) {
   )
 }
 
-function ChatTab({ eventId }) {
+function ChatTab({ eventId, cooldownSeconds }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [actionError, setActionError] = useState(null)
+  const cooldown = useCooldown('chat')
   const lastMessageRef = useRef(null)
   const polledAtRef = useRef(null)
   const listRef = useRef(null)
@@ -543,7 +583,7 @@ function ChatTab({ eventId }) {
   async function handleSend(e) {
     e.preventDefault()
     const trimmed = draft.trim()
-    if (!trimmed) return
+    if (!trimmed || cooldown.seconds > 0) return
 
     setSending(true)
     setActionError(null)
@@ -555,8 +595,10 @@ function ChatTab({ eventId }) {
       atBottomRef.current = true
       mergeMessages([body.message])
       scrollToBottom()
+      cooldown.start(cooldownSeconds)
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : '送信に失敗しました')
+      cooldown.start(err instanceof ApiError ? err.retryAfter : 0)
     } finally {
       setSending(false)
     }
@@ -629,9 +671,9 @@ function ChatTab({ eventId }) {
         <button
           type="submit"
           className="btn-primary"
-          disabled={sending || draft.trim().length === 0}
+          disabled={sending || cooldown.seconds > 0 || draft.trim().length === 0}
         >
-          {sending ? '送信中...' : '送信'}
+          {cooldown.seconds > 0 ? `あと${cooldown.seconds}秒` : sending ? '送信中...' : '送信'}
         </button>
       </form>
     </div>
@@ -643,6 +685,34 @@ function EventDetail() {
   const [event, setEvent] = useState(null)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('official')
+  const [cooldownSeconds, setCooldownSeconds] = useState(DEFAULT_COOLDOWN)
+  const { profile } = useAuth()
+
+  useEffect(() => {
+    // 同じタブで別のユーザーがログインした場合、前の人の待ち時間を引き継がない
+    if (cooldownOwnerId !== profile?.id) {
+      cooldownOwnerId = profile?.id
+      cooldownUntil.post = 0
+      cooldownUntil.chat = 0
+    }
+  }, [profile?.id])
+
+  useEffect(() => {
+    let active = true
+    // 取得できなければ既定値のまま動かす(表示が少しずれるだけで送信自体は成立する)
+    getConfig()
+      .then((body) => {
+        if (!active) return
+        setCooldownSeconds({
+          post: body.post.cooldownSeconds,
+          chat: body.chat.cooldownSeconds,
+        })
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -690,8 +760,12 @@ function EventDetail() {
 
       <div className="tab-panel">
         {activeTab === 'official' && <OfficialPostsTab eventId={eventId} />}
-        {activeTab === 'user' && <UserPostsTab eventId={eventId} />}
-        {activeTab === 'chat' && <ChatTab eventId={eventId} />}
+        {activeTab === 'user' && (
+          <UserPostsTab eventId={eventId} cooldownSeconds={cooldownSeconds.post} />
+        )}
+        {activeTab === 'chat' && (
+          <ChatTab eventId={eventId} cooldownSeconds={cooldownSeconds.chat} />
+        )}
       </div>
     </main>
   )
