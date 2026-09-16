@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
+import Layout from './Layout.jsx'
 
 function ProtectedRoute({ children }) {
   const { user, profileRequired, loading } = useAuth()
@@ -16,7 +17,7 @@ function ProtectedRoute({ children }) {
     return <Navigate to="/profile-setup" replace />
   }
 
-  return children
+  return <Layout>{children}</Layout>
 }
 
 export default ProtectedRoute
