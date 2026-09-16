@@ -108,6 +108,32 @@ label {
   padding: 1rem;
 }
 
+.event-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.event-card > a {
+  display: block;
+  padding: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.event-card > a:hover {
+  background: var(--color-bg);
+}
+
+.event-card p {
+  margin: 0.25em 0;
+}
+
+.event-card p.event-card-title {
+  margin: 0 0 0.5em;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
 .header {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
