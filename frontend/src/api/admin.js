@@ -1,4 +1,7 @@
-import { apiFetch } from '../lib/api.js'
+import { apiFetch, ApiError } from '../lib/api.js'
+import { supabase } from '../lib/supabase.js'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
 export function getUsers() {
   return apiFetch('/api/admin/users')
@@ -40,6 +43,35 @@ export function updateArtist(artistId, artist) {
     method: 'PATCH',
     body: JSON.stringify(artist),
   })
+}
+
+// multipartではboundary付きのContent-Typeをブラウザに決めさせる必要があり、
+// 常にapplication/jsonを付ける共通のapiFetchが使えないため個別に実装している
+export async function uploadArtistImage(file) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const form = new FormData()
+  form.append('image', file)
+
+  const res = await fetch(`${API_BASE_URL}/api/admin/artists/upload-image`, {
+    method: 'POST',
+    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+    body: form,
+  })
+
+  const body = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      body?.error?.code,
+      body?.error?.message ?? '画像のアップロードに失敗しました',
+    )
+  }
+
+  return body
 }
 
 export function getAdminEvents(cursor) {

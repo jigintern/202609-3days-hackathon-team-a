@@ -17,7 +17,8 @@ cp .env.example .env
 | `DATABASE_URL` | PrismaからSupabaseのPostgresへの接続文字列 |
 | `SUPABASE_URL` | JWKS取得・Storageアップロードに使用 |
 | `SUPABASE_SERVICE_ROLE_KEY` | Storageアップロードに使用（フロントには絶対置かない） |
-| `SUPABASE_STORAGE_BUCKET` | 画像アップロード先のバケット名（事前に作成しておく） |
+| `SUPABASE_STORAGE_BUCKET` | 投稿画像のアップロード先バケット名（事前に作成しておく） |
+| `SUPABASE_PROFILE_IMAGES_BUCKET` | アーティストのプロフィール画像のアップロード先バケット名（事前に作成しておく） |
 
 Supabaseダッシュボードで開発中はメール確認を無効にしておくこと（SPEC_1.md 2章参照）。
 

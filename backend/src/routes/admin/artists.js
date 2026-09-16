@@ -1,12 +1,20 @@
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
 import { normalizeOptional } from "../../utils/normalizeOptional.js";
 import { cursorDateSchema, decodeCursor, encodeCursor, parseLimit } from "../../utils/pagination.js";
+import { detectImageMime, uploadProfileImage } from "../../lib/supabaseStorage.js";
+import { env } from "../../lib/env.js";
 
 export const adminArtistsRouter = Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: env.imageMaxSizeMb * 1024 * 1024 },
+});
 
 // z.string().url() は new URL() で検証するため javascript: なども通ってしまう。
 // 画面にそのまま出す値なので http/https に限定する（空文字は「消す」の意味で許可）。
@@ -76,6 +84,29 @@ adminArtistsRouter.get(
         createdAt: artist.createdAt,
       })),
     });
+  })
+);
+
+adminArtistsRouter.post(
+  "/upload-image",
+  upload.single("image"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) {
+      throw Errors.validation("画像が指定されていません");
+    }
+
+    const mimetype = detectImageMime(req.file.buffer);
+    if (!mimetype) {
+      throw Errors.validation("対応していない画像形式です（jpeg / png / webp のみ）");
+    }
+
+    const url = await uploadProfileImage({
+      buffer: req.file.buffer,
+      mimetype,
+      userId: req.user.id,
+    });
+
+    res.status(201).json({ url });
   })
 );
 

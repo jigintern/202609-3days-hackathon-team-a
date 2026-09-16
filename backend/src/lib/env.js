@@ -38,6 +38,7 @@ export const env = {
   supabaseUrl,
   supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET ?? "post-images",
+  supabaseProfileImagesBucket: process.env.SUPABASE_PROFILE_IMAGES_BUCKET ?? "profile-images",
 
   postCooldownSeconds: positiveNumber("POST_COOLDOWN_SECONDS", 30),
   chatCooldownSeconds: positiveNumber("CHAT_COOLDOWN_SECONDS", 3),
