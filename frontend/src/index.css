@@ -108,6 +108,32 @@ label {
   padding: 1rem;
 }
 
+.event-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.event-card > a {
+  display: block;
+  padding: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.event-card > a:hover {
+  background: var(--color-bg);
+}
+
+.event-card p {
+  margin: 0.25em 0;
+}
+
+.event-card p.event-card-title {
+  margin: 0 0 0.5em;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
 .header {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -152,19 +178,24 @@ label {
   margin: 0;
 }
 
-.grid-item {
+.artist-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.75rem;
   min-width: 0;
 }
 
-.grid-item > span,
-.grid-item > a {
+.artist-card > a {
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.artist-card .btn-primary,
+.artist-card .btn-secondary {
+  text-align: center;
 }
 
 .auth-page {

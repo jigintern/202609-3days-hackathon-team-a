@@ -3,7 +3,7 @@ import FollowButton from './FollowButton.jsx'
 
 function ArtistListItem({ artist, onFollowChange }) {
   return (
-    <li className="card grid-item">
+    <li className="card artist-card">
       <Link to={`/artists/${artist.id}`}>{artist.name}</Link>
       <FollowButton
         artistId={artist.id}

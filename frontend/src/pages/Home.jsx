@@ -47,14 +47,16 @@ function Home() {
       {events.length > 0 && (
         <ul className="grid">
           {events.map((event) => (
-            <li key={event.id} className="card">
-              <Link to={`/events/${event.id}`}>{event.title}</Link>
-              <p>{event.artist.name}</p>
-              <p>{formatDateTime(event.startsAt)}</p>
-              <p>
-                {event.venue}
-                {event.prefecture ? `(${event.prefecture})` : ''}
-              </p>
+            <li key={event.id} className="card event-card">
+              <Link to={`/events/${event.id}`}>
+                <p className="event-card-title">{event.title}</p>
+                <p>{event.artist.name}</p>
+                <p>{formatDateTime(event.startsAt)}</p>
+                <p>
+                  {event.venue}
+                  {event.prefecture ? `(${event.prefecture})` : ''}
+                </p>
+              </Link>
             </li>
           ))}
         </ul>
