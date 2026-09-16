@@ -193,9 +193,13 @@ label {
   gap: 1rem;
 }
 
+.search-bar {
+  margin-bottom: 1rem;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1rem;
   list-style: none;
   padding: 0;
@@ -298,7 +302,7 @@ label {
 }
 
 .vault-list {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
 }
 
 .vault-card {

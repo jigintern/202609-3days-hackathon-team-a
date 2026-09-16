@@ -5,18 +5,22 @@ import ArtistThumbnail from '../components/ArtistThumbnail.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { ApiError } from '../lib/api.js'
 import { formatDateTime } from '../lib/formatDate.js'
+import { useSearchFilter } from '../hooks/useSearchFilter.js'
+
+const getEventFields = (event) => [event.title, event.artist?.name, event.venue, event.prefecture]
 
 function Home() {
   const { profile } = useAuth()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const { search, setSearch, filtered: filteredEvents } = useSearchFilter(events, getEventFields)
 
   useEffect(() => {
     let active = true
     getHome()
       .then((body) => {
-        if (active) setEvents(body.events)
+        if (active) setEvents(body.events ?? [])
       })
       .catch((err) => {
         if (active) setError(err instanceof ApiError ? err.message : 'イベントの取得に失敗しました')
@@ -46,8 +50,25 @@ function Home() {
       )}
 
       {events.length > 0 && (
+        <div className="search-bar">
+          <label htmlFor="event-search">イベントを検索</label>
+          <input
+            id="event-search"
+            type="search"
+            placeholder="イベント名・アーティスト名・会場・都道府県"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      )}
+
+      {events.length > 0 && filteredEvents.length === 0 && (
+        <p className="empty-state">条件に一致するイベントが見つかりませんでした。</p>
+      )}
+
+      {filteredEvents.length > 0 && (
         <ul className="grid">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <li key={event.id} className={`card event-card${event.artist.isOshi ? ' is-oshi' : ''}`}>
               <Link to={`/events/${event.id}`}>
                 <p className="event-card-title">{event.title}</p>
