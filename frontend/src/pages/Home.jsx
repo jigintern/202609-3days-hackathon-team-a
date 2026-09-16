@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getHome } from '../api/home.js'
 import ArtistThumbnail from '../components/ArtistThumbnail.jsx'
@@ -8,13 +8,35 @@ import { formatDateTime } from '../lib/formatDate.js'
 import { useSearchFilter } from '../hooks/useSearchFilter.js'
 
 const getEventFields = (event) => [event.title, event.artist?.name, event.venue, event.prefecture]
+const TABS = [
+  { key: 'all', label: 'すべて', emptyMessage: '条件に一致するイベントがありません。' },
+  {
+    key: 'following',
+    label: 'フォロー中',
+    emptyMessage: (
+      <>
+        フォロー中のアーティストのイベントはありません。
+        <Link to="/artists">アーティストをフォロー</Link>すると、
+        そのアーティストの開催予定イベントがここに表示されます。
+      </>
+    ),
+  },
+  { key: 'not-following', label: 'フォロー以外', emptyMessage: 'フォロー以外のイベントはありません。' },
+]
 
 function Home() {
   const { profile } = useAuth()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { search, setSearch, filtered: filteredEvents } = useSearchFilter(events, getEventFields)
+  const [activeTab, setActiveTab] = useState('all')
+  const tabEvents = useMemo(
+    () => activeTab === 'all'
+      ? events
+      : events.filter((event) => event.artist.isFollowing === (activeTab === 'following')),
+    [events, activeTab],
+  )
+  const { search, setSearch, filtered: filteredEvents } = useSearchFilter(tabEvents, getEventFields)
 
   useEffect(() => {
     let active = true
@@ -37,16 +59,27 @@ function Home() {
     <main>
       <p>ようこそ、{profile?.displayName ?? 'ゲスト'}さん</p>
 
-      <h2>フォロー中のイベント</h2>
+      <h2>開催予定のイベント</h2>
+
+      <nav className="tabs" aria-label="イベントの絞り込み">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className="tab"
+            aria-pressed={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
       {loading && <p>読み込み中...</p>}
       {error && <p role="alert">{error}</p>}
 
       {!loading && !error && events.length === 0 && (
-        <p>
-          開催予定のイベントがありません。<Link to="/artists">アーティストをフォロー</Link>すると、
-          そのアーティストのイベントがここに表示されます。
-        </p>
+        <p>現在開催予定のイベントはありません。</p>
       )}
 
       {events.length > 0 && (
@@ -62,7 +95,11 @@ function Home() {
         </div>
       )}
 
-      {events.length > 0 && filteredEvents.length === 0 && (
+      {events.length > 0 && tabEvents.length === 0 && (
+        <p className="empty-state">{TABS.find((tab) => tab.key === activeTab).emptyMessage}</p>
+      )}
+
+      {tabEvents.length > 0 && filteredEvents.length === 0 && (
         <p className="empty-state">条件に一致するイベントが見つかりませんでした。</p>
       )}
 

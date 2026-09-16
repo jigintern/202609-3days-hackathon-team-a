@@ -91,6 +91,8 @@ const TINY_PNG = Buffer.from(
 async function main() {
   const createdUserIds = [];
   const createdPostIds = [];
+  const createdArtistIds = [];
+  const createdEventIds = [];
   const uploadedPaths = [];
 
   try {
@@ -103,6 +105,78 @@ async function main() {
     const artist = await prisma.artist.findFirst();
     const event = await prisma.event.findFirst({ where: { artistId: artist.id } });
     if (!artist || !event) throw new Error("シードデータが必要です（npm run prisma:seed）");
+
+    console.log("\n--- ホームの全イベント表示・フォロー優先順 ---");
+    const homeArtists = [];
+    for (const name of ["ホーム回帰フォロー対象", "ホーム回帰フォロー対象外", "ホーム回帰フォローのみ"]) {
+      const homeArtist = await prisma.artist.create({ data: { name } });
+      createdArtistIds.push(homeArtist.id);
+      homeArtists.push(homeArtist);
+    }
+    // 挿入順と開催順を逆にし、フォロー対象外のイベントをより早く開催する。
+    const homeEvents = [];
+    const homeNow = Date.now();
+    for (const [artistIndex, days] of [[0, 4], [1, 2], [0, 3], [1, 1], [2, 5], [0, -1]]) {
+      const homeEvent = await prisma.event.create({
+        data: {
+          artistId: homeArtists[artistIndex].id,
+          title: `ホーム回帰イベント${days}`,
+          venue: "回帰テスト会場",
+          startsAt: new Date(homeNow + days * 86400000),
+        },
+      });
+      createdEventIds.push(homeEvent.id);
+      homeEvents.push(homeEvent);
+    }
+    const upcomingIds = homeEvents.slice(0, 5).map((e) => e.id);
+    const noFollows = await req("/home", { token: user.token });
+    const noFollowEvents = noFollows.json?.events ?? [];
+    check(
+      "フォローがなくても他のアーティストの開催予定イベントがすべて返る",
+      noFollows.status === 200 && upcomingIds.every((id) => noFollowEvents.some((e) => e.id === id)),
+      noFollows
+    );
+    check(
+      "フォローがない場合は全イベントのisFollowingがfalseで開催日時昇順",
+      noFollowEvents.length > 0 && noFollowEvents.every((e, i) =>
+        e.artist.isFollowing === false &&
+        (i === 0 || Date.parse(noFollowEvents[i - 1].startsAt) <= Date.parse(e.startsAt))
+      ),
+      noFollowEvents
+    );
+    check(
+      "過去のイベントはホームに表示されない",
+      noFollows.status === 200 && !noFollowEvents.some((e) => e.id === homeEvents[5].id),
+      noFollowEvents
+    );
+
+    await prisma.follow.create({ data: { userId: user.userId, artistId: homeArtists[0].id } });
+    await prisma.follow.create({ data: { userId: user.userId, artistId: homeArtists[2].id } });
+    await prisma.user.update({ where: { id: user.userId }, data: { oshiArtistId: homeArtists[0].id } });
+    const following = await req("/home", { token: user.token });
+    const followingEvents = following.json?.events ?? [];
+    const fixtureIds = followingEvents.filter((e) => upcomingIds.includes(e.id)).map((e) => e.id);
+    check(
+      "開催日が遅くてもフォロー中を優先し、各グループ内は開催日時昇順",
+      following.status === 200 &&
+        fixtureIds.join(",") === [homeEvents[2], homeEvents[0], homeEvents[4], homeEvents[3], homeEvents[1]].map((e) => e.id).join(","),
+      fixtureIds
+    );
+    check(
+      "各イベントのisFollowingと既存のisOshiが正しい",
+      followingEvents.length > 0 && followingEvents.every((e) =>
+        e.artist.isFollowing === (e.artist.id === homeArtists[0].id || e.artist.id === homeArtists[2].id) &&
+        e.artist.isOshi === (e.artist.id === homeArtists[0].id)
+      ),
+      followingEvents
+    );
+    check(
+      "フォロー中でも最推しでないアーティストはisFollowingのみtrue",
+      followingEvents.some((e) =>
+        e.id === homeEvents[4].id && e.artist.isFollowing === true && e.artist.isOshi === false
+      ),
+      followingEvents
+    );
 
     console.log("\n--- プロフィール作成の競合（500にならないこと） ---");
     const raw = await createSupabaseUser();
@@ -379,6 +453,8 @@ async function main() {
     console.log(`\n完了: ${failures === 0 ? "全項目パス" : `${failures}件失敗`}`);
   } finally {
     await prisma.post.deleteMany({ where: { id: { in: createdPostIds } } }).catch(() => {});
+    await prisma.event.deleteMany({ where: { id: { in: createdEventIds } } }).catch(() => {});
+    await prisma.artist.deleteMany({ where: { id: { in: createdArtistIds } } }).catch(() => {});
     for (const id of createdUserIds) {
       await prisma.reaction.deleteMany({ where: { userId: id } }).catch(() => {});
       await prisma.chatMessage.deleteMany({ where: { userId: id } }).catch(() => {});

@@ -11,18 +11,18 @@ homeRouter.get(
       where: { userId: req.user.id },
       select: { artistId: true },
     });
-    const artistIds = follows.map((f) => f.artistId);
-
-    if (artistIds.length === 0) {
-      res.json({ events: [] });
-      return;
-    }
+    const followedArtistIds = new Set(follows.map((f) => f.artistId));
 
     const events = await prisma.event.findMany({
-      where: { artistId: { in: artistIds }, startsAt: { gte: new Date() } },
+      where: { startsAt: { gte: new Date() } },
       orderBy: { startsAt: "asc" },
       include: { artist: { select: { id: true, name: true, imageUrl: true } } },
     });
+
+    events.sort((a, b) =>
+      Number(followedArtistIds.has(b.artistId)) - Number(followedArtistIds.has(a.artistId)) ||
+      a.startsAt - b.startsAt
+    );
 
     res.json({
       events: events.map((event) => ({
@@ -31,7 +31,11 @@ homeRouter.get(
         venue: event.venue,
         prefecture: event.prefecture,
         startsAt: event.startsAt,
-        artist: { ...event.artist, isOshi: event.artist.id === req.user.oshiArtistId },
+        artist: {
+          ...event.artist,
+          isOshi: event.artist.id === req.user.oshiArtistId,
+          isFollowing: followedArtistIds.has(event.artistId),
+        },
       })),
     });
   })
