@@ -19,13 +19,15 @@ homeRouter.get(
       include: { artist: { select: { id: true, name: true, imageUrl: true } } },
     });
 
-    events.sort((a, b) =>
-      Number(followedArtistIds.has(b.artistId)) - Number(followedArtistIds.has(a.artistId)) ||
-      a.startsAt - b.startsAt
-    );
+    const rankedEvents = events.map((event) => {
+      const isOshi = event.artistId === req.user.oshiArtistId;
+      const isFollowing = followedArtistIds.has(event.artistId);
+      return { event, isOshi, isFollowing, rank: isOshi ? 0 : isFollowing ? 1 : 2 };
+    });
+    rankedEvents.sort((a, b) => a.rank - b.rank || a.event.startsAt - b.event.startsAt);
 
     res.json({
-      events: events.map((event) => ({
+      events: rankedEvents.map(({ event, isOshi, isFollowing }) => ({
         id: event.id,
         title: event.title,
         venue: event.venue,
@@ -33,8 +35,8 @@ homeRouter.get(
         startsAt: event.startsAt,
         artist: {
           ...event.artist,
-          isOshi: event.artist.id === req.user.oshiArtistId,
-          isFollowing: followedArtistIds.has(event.artistId),
+          isOshi,
+          isFollowing,
         },
       })),
     });
