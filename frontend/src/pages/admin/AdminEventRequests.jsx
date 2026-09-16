@@ -2,12 +2,9 @@ import { useCallback, useState } from 'react'
 import { getEventRequests, updateEventRequestStatus } from '../../api/admin.js'
 import { useFetch } from '../../hooks/useFetch.js'
 import { useAsyncAction } from '../../hooks/useAsyncAction.js'
+import { formatDateTime } from '../../lib/formatDate.js'
 
 const STATUS_LABEL = { pending: '未対応', approved: '承認済み', rejected: '却下' }
-
-function formatDateTime(value) {
-  return value ? new Date(value).toLocaleString('ja-JP') : '未定'
-}
 
 function AdminEventRequests() {
   const [status, setStatus] = useState('pending')
@@ -56,7 +53,7 @@ function AdminEventRequests() {
                   <strong>{request.artistName}</strong> ／ {request.title}
                 </p>
                 <p className="admin-meta">
-                  会場: {request.venue || '未定'} ／ 開催日: {formatDateTime(request.startsAt)}
+                  会場: {request.venue || '未定'} ／ 開催日: {request.startsAt ? formatDateTime(request.startsAt) : '未定'}
                 </p>
                 {request.note && <p className="admin-meta">備考: {request.note}</p>}
                 <p className="admin-meta">
