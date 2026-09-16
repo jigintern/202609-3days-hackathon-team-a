@@ -288,14 +288,16 @@ function UserPostsTab({ eventId, cooldownSeconds }) {
   }
 
   async function handleDeletePost(postId) {
-    if (deletingPostId) return
+    if (deletingPostId === postId) return
 
     setDeletingPostId(postId)
     setActionError(null)
     try {
       await deletePost(postId)
-      // カーソルが配列オフセットのため、件数が減ると続きの取得がずれる。一覧ごと取り直す
-      fetchFirstPage()
+      const remaining = posts.filter((post) => post.id !== postId)
+      setPosts(remaining)
+      // 画面から全部消えたのに続きが残っている状態を避ける
+      if (remaining.length === 0 && nextCursor) fetchFirstPage()
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : '投稿の削除に失敗しました')
     } finally {
@@ -309,7 +311,7 @@ function UserPostsTab({ eventId, cooldownSeconds }) {
     try {
       const body = await listPosts(eventId, { type: 'fan', sort, cursor: nextCursor })
       if (requestRef.current !== requestId) return
-      // カーソルが配列オフセットのため、並び順が変わると同じ投稿が再度返ることがある
+      // 投稿後の再取得と行き違うと同じ投稿が二度入り得るため、IDで重複を除く
       setPosts((prev) => {
         const seen = new Set(prev.map((post) => post.id))
         return [...prev, ...body.posts.filter((post) => !seen.has(post.id))]
@@ -319,7 +321,8 @@ function UserPostsTab({ eventId, cooldownSeconds }) {
       if (requestRef.current !== requestId) return
       setError(err instanceof ApiError ? err.message : '投稿の取得に失敗しました')
     } finally {
-      if (requestRef.current === requestId) setLoadingMore(false)
+      // 世代が変わっていてもボタンの状態は戻す必要がある
+      setLoadingMore(false)
     }
   }
 
@@ -476,6 +479,7 @@ function ChatTab({ eventId, cooldownSeconds }) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [actionError, setActionError] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const cooldown = useCooldown('chat')
   const lastMessageRef = useRef(null)
   const polledAtRef = useRef(null)
@@ -605,6 +609,10 @@ function ChatTab({ eventId, cooldownSeconds }) {
   }
 
   async function handleDelete(messageId) {
+    // 連打すると2回目が404になり、削除できているのに失敗したように見えてしまう
+    if (deletingId === messageId) return
+
+    setDeletingId(messageId)
     setActionError(null)
     try {
       await deleteMessage(messageId)
@@ -612,6 +620,8 @@ function ChatTab({ eventId, cooldownSeconds }) {
     } catch (err) {
       // ポーリングが3秒ごとにerrorを消すため、操作エラーは別の状態で保持する
       setActionError(err instanceof ApiError ? err.message : '削除に失敗しました')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -644,9 +654,10 @@ function ChatTab({ eventId, cooldownSeconds }) {
                       <button
                         type="button"
                         className="link-btn"
+                        disabled={deletingId === message.id}
                         onClick={() => handleDelete(message.id)}
                       >
-                        削除
+                        {deletingId === message.id ? '削除中...' : '削除'}
                       </button>
                     )}
                   </div>
