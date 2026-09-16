@@ -114,6 +114,7 @@ model Event {
   messages ChatMessage[]
 
   @@index([artistId, startsAt])
+  @@index([startsAt])
 }
 
 model Post {
