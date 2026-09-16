@@ -23,6 +23,8 @@ Supabaseダッシュボードで開発中はメール確認を無効にしてお
 
 ## DBスキーマの反映とシード投入
 
+スキーマやマイグレーションの変更を pull した後、`npm run dev` を使わない場合は `npm run prisma:generate` を実行して Prisma Client を再生成する。`npm install` と `npm run dev` では自動で再生成される。
+
 ```bash
 npm run prisma:migrate
 npm run prisma:seed
