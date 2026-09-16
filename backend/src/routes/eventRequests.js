@@ -39,13 +39,16 @@ eventRequestsRouter.post(
     }
 
     // 存在しないIDをそのまま入れると外部キー違反で500になるため、先に確かめる
-    if (parsed.data.artistId) {
-      const artist = await prisma.artist.findUnique({ where: { id: parsed.data.artistId } });
+    const data = { ...parsed.data };
+    if (data.artistId) {
+      const artist = await prisma.artist.findUnique({ where: { id: data.artistId } });
       if (!artist) throw Errors.validation("選択されたアーティストが見つかりません");
+      // 送られてきた名前は古い可能性があるため、選ばれたアーティストの現在の名前で保存する
+      data.artistName = artist.name;
     }
 
     const request = await prisma.eventRequest.create({
-      data: { userId: req.user.id, ...parsed.data },
+      data: { userId: req.user.id, ...data },
     });
 
     res.status(201).json({ eventRequest: serializeEventRequest(request) });

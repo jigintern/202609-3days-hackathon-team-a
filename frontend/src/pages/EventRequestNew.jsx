@@ -25,6 +25,7 @@ const EMPTY_FORM = {
 
 function EventRequestNew() {
   const [form, setForm] = useState(EMPTY_FORM)
+  const [artistQuery, setArtistQuery] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -35,10 +36,23 @@ function EventRequestNew() {
   const artists = artistData?.artists ?? []
 
   // 同名のアーティストが登録され得るため、選択値には名前ではなくIDを使う
+  const selectedArtist = artists.find((artist) => artist.id === form.artistId)
   const selectedArtistName =
-    form.artistId === OTHER
-      ? form.artistName.trim()
-      : (artists.find((artist) => artist.id === form.artistId)?.name ?? '')
+    form.artistId === OTHER ? form.artistName.trim() : (selectedArtist?.name ?? '')
+
+  const query = artistQuery.trim().toLowerCase()
+  const matched = query
+    ? artists.filter(
+        (artist) =>
+          artist.name.toLowerCase().includes(query) ||
+          (artist.nameKana ?? '').toLowerCase().includes(query),
+      )
+    : artists
+  // 絞り込みで選択中の候補が消えると、選んだはずの値が画面から消えてしまう
+  const visibleArtists =
+    selectedArtist && !matched.some((artist) => artist.id === selectedArtist.id)
+      ? [selectedArtist, ...matched]
+      : matched
 
   const {
     run: submit,
@@ -56,6 +70,7 @@ function EventRequestNew() {
       note: form.note.trim() || undefined,
     })
     setForm(EMPTY_FORM)
+    setArtistQuery('')
     setSubmitted(true)
     setReloadKey((prev) => prev + 1)
   })
@@ -82,7 +97,18 @@ function EventRequestNew() {
       <section className="card form-card">
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="artistId">アーティスト(必須)</label>
+            <label htmlFor="artistSearch">アーティスト(必須)</label>
+            {/* 絞り込み中にEnterを押すと申請が飛んでしまうため、ここでは送信させない */}
+            <input
+              id="artistSearch"
+              type="search"
+              value={artistQuery}
+              onChange={(e) => setArtistQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.preventDefault()
+              }}
+              placeholder="名前で絞り込む"
+            />
             <select
               id="artistId"
               value={form.artistId}
@@ -90,13 +116,18 @@ function EventRequestNew() {
               required
             >
               <option value="">選択してください</option>
-              {artists.map((artist) => (
+              {visibleArtists.map((artist) => (
                 <option key={artist.id} value={artist.id}>
                   {artist.name}
                 </option>
               ))}
               <option value={OTHER}>その他(一覧にない)</option>
             </select>
+            {query && matched.length === 0 && (
+              <p className="muted">
+                「{artistQuery}」に一致するアーティストはいません。「その他」で入力してください。
+              </p>
+            )}
             {artistError && (
               <p role="alert">
                 アーティストの一覧を取得できませんでした。「その他」で名前を入力してください。
