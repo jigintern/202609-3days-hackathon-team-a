@@ -3,7 +3,7 @@ import multer from "multer";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Errors } from "../utils/errors.js";
 import { env } from "../lib/env.js";
-import { isAllowedImageMime, uploadImage } from "../lib/supabaseStorage.js";
+import { detectImageMime, uploadImage } from "../lib/supabaseStorage.js";
 
 export const uploadsRouter = Router();
 
@@ -21,15 +21,15 @@ uploadsRouter.post(
       throw Errors.validation("画像が指定されていません");
     }
 
-    for (const file of files) {
-      if (!isAllowedImageMime(file.mimetype)) {
-        throw Errors.validation("対応していない画像形式です（jpeg / png / webp のみ）");
-      }
+    // クライアントが名乗るmimetypeではなく、実際のバイト列で判定する
+    const detected = files.map((file) => detectImageMime(file.buffer));
+    if (detected.some((mimetype) => mimetype === null)) {
+      throw Errors.validation("対応していない画像形式です（jpeg / png / webp のみ）");
     }
 
     const urls = await Promise.all(
-      files.map((file) =>
-        uploadImage({ buffer: file.buffer, mimetype: file.mimetype, userId: req.user.id })
+      files.map((file, index) =>
+        uploadImage({ buffer: file.buffer, mimetype: detected[index], userId: req.user.id })
       )
     );
 

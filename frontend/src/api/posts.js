@@ -14,6 +14,10 @@ export function createPost(eventId, { body, imageUrls } = {}) {
   })
 }
 
+export function deletePost(postId) {
+  return apiFetch(`/api/posts/${postId}`, { method: 'DELETE' })
+}
+
 export function addReaction(postId) {
   return apiFetch(`/api/posts/${postId}/reactions`, { method: 'POST' })
 }

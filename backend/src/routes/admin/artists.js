@@ -6,11 +6,22 @@ import { Errors } from "../../utils/errors.js";
 
 export const adminArtistsRouter = Router();
 
+// z.string().url() は new URL() で検証するため javascript: なども通ってしまう。
+// 画面にそのまま出す値なので http/https に限定する。
+function isHttpUrl(value) {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const artistSchema = z.object({
   name: z.string().trim().min(1).max(100),
   nameKana: z.string().trim().max(100).optional(),
   description: z.string().trim().max(1000).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().refine(isHttpUrl, "imageUrlはhttp/httpsのURLを指定してください").optional(),
 });
 
 const updateArtistSchema = artistSchema.partial();

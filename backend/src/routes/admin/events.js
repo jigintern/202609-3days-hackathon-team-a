@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Errors } from "../../utils/errors.js";
+import { isUploadedImageUrl } from "../../lib/supabaseStorage.js";
 import { env } from "../../lib/env.js";
 
 export const adminEventsRouter = Router();
@@ -19,7 +20,14 @@ const updateEventSchema = eventSchema.partial();
 
 const officialPostSchema = z.object({
   body: z.string().trim().min(1).max(env.postMaxLength),
-  imageUrls: z.array(z.string().url()).max(env.imageMaxCount).optional(),
+  imageUrls: z
+    .array(
+      z
+        .string()
+        .refine(isUploadedImageUrl, "画像URLは POST /api/uploads/images が返したものだけを指定できます")
+    )
+    .max(env.imageMaxCount)
+    .optional(),
 });
 
 adminEventsRouter.post(
@@ -48,6 +56,12 @@ adminEventsRouter.patch(
 
     const existing = await prisma.event.findUnique({ where: { id: req.params.eventId } });
     if (!existing) throw Errors.notFound("イベントが見つかりません");
+
+    // POST側と同じく、外部キー制約違反が500になる前に弾く
+    if (parsed.data.artistId) {
+      const artist = await prisma.artist.findUnique({ where: { id: parsed.data.artistId } });
+      if (!artist) throw Errors.validation("指定されたアーティストが存在しません");
+    }
 
     const event = await prisma.event.update({
       where: { id: req.params.eventId },
