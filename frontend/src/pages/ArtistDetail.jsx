@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getArtist, getArtistEvents } from '../api/artists.js'
 import { useFetch } from '../hooks/useFetch.js'
@@ -9,6 +9,11 @@ import EventListItem from '../components/EventListItem.jsx'
 function ArtistDetail() {
   const { artistId } = useParams()
   const [scope, setScope] = useState('upcoming')
+  const [imageFailed, setImageFailed] = useState(false)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [artistId])
 
   const fetchArtist = useCallback(() => getArtist(artistId).then((body) => body.artist), [artistId])
   const {
@@ -30,7 +35,9 @@ function ArtistDetail() {
   return (
     <main>
       <div className="artist-hero">
-        {artist.imageUrl && <img src={artist.imageUrl} alt="" />}
+        {artist.imageUrl && !imageFailed && (
+          <img src={artist.imageUrl} alt="" onError={() => setImageFailed(true)} />
+        )}
         <div className="artist-hero-body">
           <h1>{artist.name}</h1>
           {artist.description && <p>{artist.description}</p>}
