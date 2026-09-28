@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum PostType {
+  official
+  fan
+}
+
+enum RequestStatus {
+  pending
+  approved
+  rejected
+}
+
+/// Supabase Auth のユーザーと1対1。id には auth 側のユーザーid（JWTの sub）をそのまま入れる。
+/// パスワードは Supabase Auth が持つため、ここには保存しない。
+model User {
+  id           String   @id
+  email        String   @unique
+  displayName  String
+  role         Role     @default(user)
+  isSuspended  Boolean  @default(false)
+  oshiArtistId String?
+  createdAt    DateTime @default(now())
+
+  follows       Follow[]
+  posts         Post[]
+  reactions     Reaction[]
+  messages      ChatMessage[]
+  eventRequests EventRequest[]
+  vaultProfile  VaultProfile?
+  vaultEntries  VaultEntry[]
+  oshiArtist    Artist?        @relation("OshiArtist", fields: [oshiArtistId], references: [id], onDelete: SetNull)
+}
+
+/// パスワード管理（SPEC_1.md 4.7 案B）の鍵導出パラメータ。
+/// マスターパスワードそのものも復号鍵もサーバーには保存しない。
+/// verifier は固定文字列を暗号化したもので、マスターパスワードの正否判定にフロントが使う。
+model VaultProfile {
+  userId         String   @id
+  kdfSalt        String
+  kdfIterations  Int
+  verifierIv     String
+  verifierCipher String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// 認証情報の保管庫。サイト名・会員番号・パスワードはすべて cipherText の中にあり、
+/// サーバーからは中身を読めない。
+model VaultEntry {
+  id         String   @id @default(uuid())
+  userId     String
+  iv         String
+  cipherText String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Artist {
+  id          String   @id @default(uuid())
+  name        String
+  nameKana    String?
+  description String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  events        Event[]
+  follows       Follow[]
+  oshiedBy      User[]         @relation("OshiArtist")
+  eventRequests EventRequest[]
+}
+
+model Follow {
+  userId    String
+  artistId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([userId, artistId])
+}
+
+/// 公演単位。同一ツアーの各公演は別レコードとして扱う
+model Event {
+  id         String   @id @default(uuid())
+  artistId   String
+  title      String
+  venue      String
+  prefecture String?
+  startsAt   DateTime
+  createdAt  DateTime @default(now())
+
+  artist   Artist        @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  posts    Post[]
+  messages ChatMessage[]
+
+  @@index([artistId, startsAt])
+  @@index([startsAt])
+}
+
+model Post {
+  id        String    @id @default(uuid())
+  eventId   String
+  userId    String
+  type      PostType  @default(fan)
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  event     Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id])
+  images    PostImage[]
+  reactions Reaction[]
+
+  @@index([eventId, type, createdAt])
+}
+
+model PostImage {
+  id       String @id @default(uuid())
+  postId   String
+  url      String
+  position Int    @default(0)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+/// いいね。1ユーザーにつき1投稿1件
+model Reaction {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+}
+
+model ChatMessage {
+  id        String    @id @default(uuid())
+  eventId   String
+  userId    String
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([eventId, createdAt])
+}
+
+model EventRequest {
+  id         String        @id @default(uuid())
+  userId     String
+  /// 一覧から選ばれた場合のみ入る。「その他」で自由入力された場合はnull
+  artistId   String?
+  artistName String
+  title      String
+  venue      String?
+  startsAt   DateTime?
+  note       String?
+  status     RequestStatus @default(pending)
+  createdAt  DateTime      @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  artist Artist? @relation(fields: [artistId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+}

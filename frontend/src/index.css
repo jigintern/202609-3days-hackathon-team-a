@@ -1,0 +1,909 @@
+:root {
+  --color-primary: #e2001a;
+  --color-primary-dark: #b80014;
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-text: #222222;
+  --color-text-muted: #666666;
+  --color-border: #e0e0e0;
+  --color-danger: #d32f2f;
+  --color-oshi: #ff8c1a;
+  --color-oshi-bg: #ffe8cc;
+  --color-follow: #29b6f6;
+  --color-follow-dark: #039be5;
+  --color-follow-bg: #e3f6fd;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --font-sans: 'Hiragino Sans', 'Yu Gothic', 'Segoe UI', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  width: 100%;
+  padding: 0.6em 0.75em;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25em;
+}
+
+[role='alert'] {
+  color: var(--color-danger);
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border: 1px solid var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn-secondary {
+  background: #fff;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #fdecee;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-oshi {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--color-oshi);
+  color: #fff;
+  border: 1px solid var(--color-oshi);
+}
+
+.btn-oshi:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-follow,
+.btn-follow-active {
+  display: inline-block;
+  border-radius: var(--radius);
+  padding: 0.6em 1.4em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-follow {
+  background: var(--color-follow);
+  color: #fff;
+  border: 1px solid var(--color-follow);
+}
+
+.btn-follow:hover:not(:disabled) {
+  background: var(--color-follow-dark);
+  border-color: var(--color-follow-dark);
+}
+
+.btn-follow-active {
+  background: #fff;
+  color: var(--color-follow-dark);
+  border: 1px solid var(--color-follow);
+}
+
+.btn-follow-active:hover:not(:disabled) {
+  background: var(--color-follow-bg);
+}
+
+.btn-follow:disabled,
+.btn-follow-active:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.is-oshi {
+  background: var(--color-oshi-bg);
+}
+
+.event-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.event-card > a {
+  display: block;
+  padding: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.event-card > a:hover {
+  background: var(--color-bg);
+}
+
+.event-card p {
+  margin: 0.25em 0;
+}
+
+.event-card p.event-card-title {
+  margin: 0 0 0.5em;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  flex-wrap: wrap;
+}
+
+.header-logo {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--color-primary);
+}
+
+.header-logo:hover {
+  text-decoration: none;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-bar {
+  margin-bottom: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.artist-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.artist-card > a {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artist-card .btn-primary,
+.artist-card .btn-secondary,
+.artist-card .btn-oshi,
+.artist-card .btn-follow,
+.artist-card .btn-follow-active {
+  text-align: center;
+}
+
+.auth-page {
+  max-width: 400px;
+  margin: 3rem auto;
+  padding: 2rem;
+}
+
+.auth-page form > div {
+  margin-bottom: 1rem;
+}
+
+.auth-page .btn-primary {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Vault */
+.vault-form .btn-secondary {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.vault-field,
+.vault-credential-types {
+  margin: 0 0 1rem;
+}
+
+.vault-credential-types {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.vault-credential-legend {
+  padding: 0;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.vault-radio-group,
+.vault-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.vault-radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.vault-radio-option:has(input:checked) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.vault-radio-option input[type='radio'] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}
+
+.vault-toolbar {
+  margin-bottom: 1rem;
+}
+
+.vault-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+
+.vault-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.vault-card h2 {
+  margin: 0 0 0.5rem;
+}
+
+.vault-card p {
+  margin: 0 0 0.75rem;
+}
+
+.vault-card p .btn-secondary {
+  margin: 0.25rem 0 0.25rem 0.5rem;
+}
+
+.vault-card > .btn-secondary + .btn-secondary {
+  margin-left: 0.5rem;
+}
+
+/* ===== イベント詳細 ===== */
+
+.event-header {
+  margin-bottom: 1rem;
+}
+
+.event-header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.event-header p {
+  margin: 0.25em 0;
+  color: var(--color-text-muted);
+}
+
+.event-header .event-artist {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* タブ: 文字だけでなく領域全体を押せるようにする */
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.9em 0.5em;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.tab:hover {
+  background: var(--color-bg);
+}
+
+.tab[aria-pressed='true'] {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.tab-panel {
+  background: var(--color-surface);
+  border-radius: 0 0 var(--radius) var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+/* ===== 投稿 ===== */
+
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.post {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
+}
+
+.post.is-official {
+  border-left: 3px solid var(--color-primary);
+}
+
+.badge-official {
+  display: inline-block;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 0.1em 0.6em;
+  margin-bottom: 0.4em;
+}
+
+.post-author {
+  margin: 0 0 0.35em;
+  font-weight: 700;
+}
+
+.post-body {
+  margin: 0 0 0.5em;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.post-images {
+  display: grid;
+  gap: 3px;
+  max-width: 360px;
+  margin-bottom: 0.5em;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.post-images[data-count='1'] {
+  grid-template-columns: 1fr;
+}
+
+.post-images[data-count='2'],
+.post-images[data-count='3'],
+.post-images[data-count='4'] {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* 3枚のときは1枚目を横いっぱいにして収まりを良くする */
+.post-images[data-count='3'] > *:first-child {
+  grid-column: span 2;
+}
+
+/* タイムラインでは本文を主役にしたいので、画像は小さく抑える(押すと拡大できる) */
+.post-images img {
+  display: block;
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+/* 1枚だけのときは切り取らずに全体を見せる */
+.post-images[data-count='1'] img {
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+  background: var(--color-bg);
+}
+
+.post-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.like-btn {
+  background: none;
+  border: none;
+  padding: 0.2em 0.5em;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.like-btn:hover:not(:disabled) {
+  background: #fdecee;
+  color: var(--color-primary);
+}
+
+.like-btn[aria-pressed='true'] {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.post-form {
+  margin-bottom: 1rem;
+}
+
+.post-form textarea {
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.char-count {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.sort-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sort-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.3em 1em;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.sort-btn[aria-pressed='true'] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.empty-state {
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 2rem 0;
+}
+
+/* ===== チャット(掲示板とトークアプリの中間) ===== */
+
+.chat-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-date-separator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  margin: 0.25rem 0;
+}
+
+.chat-date-separator::before,
+.chat-date-separator::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+/* 自分の発言は右、他の人は左に寄せて話者を一目で分かるようにする */
+.chat-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.chat-row.is-mine {
+  align-items: flex-end;
+}
+
+.chat-bubble {
+  max-width: 80%;
+  min-width: 0;
+  padding: 0.5em 0.75em;
+  border-radius: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-border);
+}
+
+.chat-row.is-mine .chat-bubble {
+  background: #fdecee;
+  border-color: #f3c6cc;
+  border-left-color: var(--color-primary);
+}
+
+/* 掲示板のように、発言ごとに名前・日時を常に出す */
+.chat-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25em;
+}
+
+.chat-author {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.chat-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ===== 画像 ===== */
+
+.image-zoom-btn {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  line-height: 0;
+  cursor: zoom-in;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.8);
+  border: none;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius);
+}
+
+/* ===== 画像の選択 ===== */
+
+.file-picker {
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.file-picker input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.file-picker-label {
+  display: inline-block;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5em 1.2em;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.file-picker-label:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* 入力欄自体は見えないので、フォーカス位置がラベルで分かるようにする */
+.file-picker input[type='file']:focus-visible + .file-picker-label {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.file-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  list-style: none;
+  padding: 0;
+}
+
+.file-previews img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+}
+
+/* ===== 読み込み中のスケルトン ===== */
+
+.skeleton {
+  background: linear-gradient(90deg, #ececec 25%, #f5f5f5 37%, #ececec 63%);
+  background-size: 400% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.skeleton-line {
+  height: 0.9em;
+  margin: 0.5em 0;
+}
+
+.skeleton-line.is-short {
+  width: 35%;
+}
+
+.skeleton-line.is-medium {
+  width: 70%;
+}
+
+/* ===== 汎用 ===== */
+
+.stack {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.form-card {
+  max-width: 560px;
+}
+
+.form-card form > div {
+  margin-bottom: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15em 0.9em;
+}
+
+.badge-pending {
+  background: #fff4e5;
+  color: #b26a00;
+}
+
+.badge-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-rejected {
+  background: #fdecee;
+  color: var(--color-danger);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ===== アーティスト詳細 ===== */
+
+.artist-hero {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.artist-hero img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.artist-hero-body {
+  flex: 1;
+  min-width: 220px;
+}
+
+.artist-hero h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.artist-hero-body p {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* ===== イベント追加申請 ===== */
+
+.request-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5em;
+}
+
+.request-card p.request-title {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.request-card p {
+  margin: 0.2em 0;
+  color: var(--color-text-muted);
+}
